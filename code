@@ -67,23 +67,56 @@ def update_laser_angle(alpha_laser, direct):
 def rotate_tag(angle_d,tag_angle, x_c, y_c):
 	return update_tag_points(x_c, y_c, tag_angle+angle_d);
 
-def path_follow(tag_angle, robot_angle, x_c, y_c, s1, s2):
-	#rotate tag perpendicular to wheels
+def path_follow(tag_angle, robot_angle, x_c, y_c):
+	#rotate tag perpendicular to line
 	tag_pts = rotate_tag(robot_angle+pi/2-tag_angle, tag_angle,x_c,y_c); 
-
+        s1 = get_s(1);
+        s2 = get_s(2);
 	#while difference of sensor readings is within threshold, move forward
 	while(abs(s1-s2) < forward_th):
 		f_move = foward_unit(x_c, y_c, robot_angle);
 		tag_pts = f_move[0:7];
 		x_c = f_move[8];
 		y_c = f_move[9];
-
+                s1 = get_s(1);
+                s2 = get_s(2);
+                
 	path_find();
 
-def path_find(s1, s2):
-	diff = 0;
-	for 
+def get_s(num):
+        #get sensor reading
+        if(num == 1):
+                #get reading from first sensor
+                return 5;
+        if(num == 2):
+                #get reading from second sensor
+                return 2.42;
 
+def path_find(x_c, y_c, robot_angle, laser_angle):
+	diff_max = 0;
+	angle_to_line = 0;
+	
+	d_turn = .001;
+	theta = 0;
+	while theta < 2*pi:             
+                s1 = get_s(1);
+                s2 = get_s(2);         
+                if(diff_max < abs(s1-s2)):
+                        angle_to_line = theta;
+                        diff_max = abs(s1-s2);
+                tag_pts = rotate_tag(dtheta, theta, x_c, y_c);
+                theta = theta + dtheta;
+        rotate(theta - robot_angle, x_c,y_c, robot_angle, laser_angle, theta);
+        while(abs(s1-s2) < forward_th):
+               f_data = forward_unit(x_c, y_c, robot_angle);
+               tag_pts = f_data[0:7];
+               x_c = f_data[8];
+               y_c = f_data[9];
+               s1 = get_s(1);
+               s2 = get_s(2);
+                
+        rotate(theta - robot_angle+pi/2, x_c, y_c, robot_angle, laser_angle, theta);
+        
 
 
 def main():
