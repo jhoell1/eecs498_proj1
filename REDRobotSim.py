@@ -8,6 +8,8 @@ from robotSim import *
 
 from pdb import set_trace as DEBUG
 
+#BLAH
+
 class REDRobotSim( RobotSimInterface ):
   def __init__(self, *args, **kw):
     RobotSimInterface.__init__(self, *args, **kw)
