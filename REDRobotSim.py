@@ -72,20 +72,39 @@ class REDRobotSim( RobotSimInterface ):
     def servoNoise(self):
         """
         STUB Need to figure out how to model servo noise
+        Things to consider here 
+        backlash/play
+        Encoder dead zone
+
         """
-        return 0
+
+        play = .001 #some small value that the servo is allowed move to before motion is detected by the encoder
+        electricalNoise = .01*randn() #Electrical gaussian noise in the servo's encoding sensor
+        deadzoneError = (1/6)*randn()*.01 #There is a 60 degree dead zone in the servo's encoder. 
+        #The encoder's this dead zone may introuce additional random error
+
+        return play+electricalNoise+deadzoneError
 
     #def cameraNoise(self):
     #    """
     #    STUB Need to figure out how to model camera noise
+    #   NO! not doing it.
     #   """
     #    return 0
 
     def groundInteractionNoise(self):
         """
-        STUB Need to figure out how to model ground interaction noise i.e slip and stuff like that
+        STUB Need to figure out how to model ground interaction noise i.e slip 
+        Items to consider:
+        Slip on the ground
+
         """
-        return 0
+
+
+        slipConstant = .007 #small a small portion of error that is introduced by the robot's wheels slippong on the carpet
+        
+
+        return slipConstant
 
     #implement this function
     def refreshState( self ):
