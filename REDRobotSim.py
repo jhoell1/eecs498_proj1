@@ -21,6 +21,22 @@ class REDRobotSim( RobotSimInterface ):
 
     #write functions to control robot
 
+    def robot_forward( self, dist):
+
+
+    def robot_turn (self, dist):
+
+    def rotate_tag (self, angle):
+
+
+    def rotate_laser (self, angle):
+        
+
+
+
+
+
+
 
 
   def move( self, dist ):
