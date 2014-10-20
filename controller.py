@@ -1,6 +1,26 @@
 from math import*
 
 
+#need to convert this file into an object format
+
+#take noise into account
+#take into account the following moving frames:
+#	-robot
+#	-laser
+#	-tag
+
+
+#model robot turning vs tag+laser counter rotating
+#	- upddate robot heading
+#	- tag and laser information stay basically the same with some sort of noise factored in
+
+
+#model
+
+
+
+#need to update to take into account the fact that the 
+#tag itself can rotate - add tag angle to alpha
 def update_tag_points(x_c, y_c, alpha):
 	#corner of each tag is 45 degrees away from center
 	#this function will update the position of each tag based on
