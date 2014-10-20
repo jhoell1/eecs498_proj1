@@ -22,7 +22,7 @@ class REDRobotSim( RobotSimInterface ):
         self.aNoise = 0.1
         self.dtheta=.001
         self.dS=.001
-
+        self.dforward = .01
 
 
     #write functions to control robot
@@ -38,13 +38,20 @@ class REDRobotSim( RobotSimInterface ):
     def rotate_unit(self, direct):
 
     def forward_unit(self):
+        '''
+        Is this function supposed to be in here like this?
+        alpha isn't part of our state. is this function used to modify tagPos elsewhere
+        '''
         x_cnew = x_c + dforward*cos(alpha)
         y_cnew = y_c + dforward*sin(alpha)
         [x1,y1,x2,y2,x3,y3,x4,y4]=update_tag_points(x_cnew, y_cnew, alpha)
         return [x1,y1,x2,y2,x3,y3,x4,y4, x_cnew, y_cnew]
 
     def unitRobotMove(self,direct):
-
+        '''
+        This function will move the robot's tag points a distance dforward in the direction of it's heading  
+        '''
+        self.tagPos += self.dfowrward  * [cos(self.heading),sin(self.heading)]
 
 
     def unitRobotRotate(self,direct):
