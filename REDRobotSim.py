@@ -80,7 +80,7 @@ class REDRobotSim( RobotSimInterface ):
 
         play = .001 #some small value that the servo is allowed move to before motion is detected by the encoder
         electricalNoise = .01*randn() #Electrical gaussian noise in the servo's encoding sensor
-        deadzoneError = (1/6)*randn()*.01 #There is a 60 degree dead zone in the servo's encoder. 
+        
         #The encoder's this dead zone may introuce additional random error
 
         return play+electricalNoise+deadzoneError
@@ -91,6 +91,23 @@ class REDRobotSim( RobotSimInterface ):
     #   NO! not doing it.
     #   """
     #    return 0
+    def diameterError():
+        leftDiameter = 5.00
+        rightDiameter= 5.00
+
+        dRatio = leftDiameter/rightDiameter
+
+        return dRatio
+
+    def wheelMisalignment():
+        """
+        This error constant is meant to model the slight shift in alignment that can be brought on by
+        wheels that are out of alignment
+        """
+        wheel skew 
+
+        return 0
+
 
     def groundInteractionNoise(self):
         """
@@ -117,12 +134,12 @@ class REDRobotSim( RobotSimInterface ):
         Since the entire robot state is captured by the location of the
         robot tag corners, update the laser axis from the robot tag location 
         """
-        lasDir = self.position + [1,0]*exp(1j*(self.laserHeading)) # + add noise
+        lasDir = self.position + [1,0]*exp(1j*(self.laserHeading))+servoNoise()
         self.laserAxis = [self.position,lasDir]
 
         z = dot(self.tagPos,[1,1j])
         c = mean(z)
-        zr = c + (z-c) * exp(1j * (direct*self.dtheta+randn()*self.aNoise)) # think more about this noise -- maybe gaussian?
+        zr = c + (z-c) * exp(1j * (direct*self.dtheta+randn()*self.aNoise*diameterError()))+wheelMisalignment()
         self.tagPos[:,0] = zr.real
         self.tagPos[:,1] = zr.imag
 
