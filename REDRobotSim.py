@@ -1,11 +1,12 @@
 from gzip import open as opengz
 from json import dumps as json_dumps
-from numpy import asfarray, dot, c_, newaxis, mean, exp, sum, sqrt
+from numpy import cos,sin,asfarray, dot, c_, newaxis, mean, exp, sum, sqrt, sign
 from numpy.linalg import svd
 from numpy.random import randn
 from scipy import pi
 from waypointShared import *
 from robotSim import *
+from joy import progress
 
 from pdb import set_trace as DEBUG
 
@@ -14,37 +15,63 @@ from pdb import set_trace as DEBUG
 class REDRobotSim( RobotSimInterface ):
     def __init__(self, *args, **kw):
         RobotSimInterface.__init__(self, *args, **kw)
-        self.heading = 0 #absolute heading from arena +x --> information not accesible to simulation 
-        self.laserHeading = 0 #absolute from arena +x --> information not accesible to simulation
-        self.tagAngle = 0 #wrt heading
-        self.position = asfarray([0,0])
-        self.dNoise = 0.1
-        self.aNoise = 0.1
-        self.dtheta=.001
+        self.heading = 0.0 #absolute heading from arena +x --> information not accesible to simulation 
+        self.laserHeading = 0.0 #absolute from arena +x --> information not accesible to simulation
+        self.tagAngle = 0.0 #wrt heading
+        self.position = asfarray([0.0,0.0])
+        self.dNoise = 0.01
+        self.aNoise = 0.01
+        self.dtheta= 0.1 #.001
+        self.dforward = 0.1
         self.dS=.001
-
-
+        self.oldTag = 0.0
 
     #write functions to control robot
 
-    def robot_forward( self, dist):
+    def robotMove(self,numSteps,direct):
+        assert(direct==-1 or direct==1)
+        for i in range(0,numSteps):
+            self.unitRobotMove(direct)
 
-    def robot_turn (self, angle):
+    def robotTurn(self, angle):
+        while (angle > pi):
+            angle -= 2*pi;
+        while (angle < -pi):
+            angle += 2*pi;
 
-    def rotate_tag (self, angle):
+        direct = sign(angle)
+        finalHeading = self.heading + angle
+        while(abs(self.heading-finalHeading) > self.dtheta):
+            self.unitRobotRotate(direct)
+        self.tagRotate(-angle) #rotate tag back after finishing rotation
 
-    def rotate_laser (self, angle):
+    def laserRotate(self,angle):
+        while (angle > pi):
+            angle -= 2*pi;
+        while (angle < -pi):
+            angle += 2*pi;
 
-    def rotate_unit(self, direct):
+        direct = sign(angle)
+        finalLaser = self.laserHeading
+        while(abs(self.laserHeading-finalLaser) > self.dtheta):
+            self.unitLaserRotate(direct)
 
-    def forward_unit(self):
-        x_cnew = x_c + dforward*cos(alpha)
-        y_cnew = y_c + dforward*sin(alpha)
-        [x1,y1,x2,y2,x3,y3,x4,y4]=update_tag_points(x_cnew, y_cnew, alpha)
-        return [x1,y1,x2,y2,x3,y3,x4,y4, x_cnew, y_cnew]
+    def tagRotate(self, angle):
+        while (angle > pi):
+            angle -= 2*pi;
+        while (angle < -pi):
+            angle += 2*pi;
+
+        direct = sign(angle)
+        finalTag = self.tagAngle
+        while(abs(self.tagAngle-finalTag) > self.dtheta):
+            self.unitTagRotate(direct)
+
 
     def unitRobotMove(self,direct):
-
+        assert(direct==1 or direct == -1)
+        self.position += array([cos(self.heading),sin(self.heading)])*self.dforward*sign(direct)
+        self.tagPos += array([1,0])*exp(1j*self.heading)*self.dforward*direct
 
 
     def unitRobotRotate(self,direct):
@@ -52,8 +79,8 @@ class REDRobotSim( RobotSimInterface ):
         #also will update alpha. direct has to be +1 or -1
         assert(direct == 1 or direct == -1)
         self.heading = self.heading+self.dtheta*direct + self.groundInteractionNoise()
-        self.unitRotateLaser(self,direct*-1)
-        self.unitRotateTag(self,direct)
+        self.unitLaserRotate(direct*-1)
+        self.unitTagRotate(direct)
 
     def unitTagRotate(self,direct):
         """
@@ -66,26 +93,63 @@ class REDRobotSim( RobotSimInterface ):
         #This will rotate the robot's laserheading a unit step dtheta
         #also will update alpha. direct has to be +1 or -1
         assert(direct == 1 or direct == -1)
-        self.laserheading = self.laserheading+self.dtheta*direct + self.servoNoise()
+        self.laserHeading = self.laserHeading+self.dtheta*direct + self.servoNoise()
 
 
     def servoNoise(self):
         """
         STUB Need to figure out how to model servo noise
+        Things to consider here 
+        backlash/play
+        Encoder dead zone
+
         """
-        return 0
+
+        play = .001 #some small value that the servo is allowed move to before motion is detected by the encoder
+        electricalNoise = .01*randn() #Electrical gaussian noise in the servo's encoding sensor
+        
+        #The encoder's this dead zone may introuce additional random error
+        deadzoneError = 0
+
+        return play+electricalNoise+deadzoneError
 
     #def cameraNoise(self):
     #    """
     #    STUB Need to figure out how to model camera noise
+    #   NO! not doing it.
     #   """
     #    return 0
+    def diameterError():
+        leftDiameter = 5.00
+        rightDiameter= 5.00
+
+        dRatio = leftDiameter/rightDiameter
+
+        return dRatio
+
+    def wheelMisalignment():
+        """
+        This error constant is meant to model the slight shift in alignment that can be brought on by
+        wheels that are out of alignment
+        """
+        #wheel skew 
+
+        return 0
+
 
     def groundInteractionNoise(self):
         """
-        STUB Need to figure out how to model ground interaction noise i.e slip and stuff like that
+        STUB Need to figure out how to model ground interaction noise i.e slip 
+        Items to consider:
+        Slip on the ground
+        This error is parasitic in the sense that it detracts from the actual forward or rotational motion that
+        the robot exhibits in the arena.
+
         """
-        return 0
+        slipConstant = .007 #small a small portion of error that is introduced by the robot's wheels slippong on the carpet
+        robotTilt = .05 #error caused by the fact that the robot rocks back and forth on it's caster legs
+
+        return -1*(slipConstant+ robotTilt)
 
     #implement this function
     def refreshState( self ):
@@ -96,16 +160,19 @@ class REDRobotSim( RobotSimInterface ):
         Since the entire robot state is captured by the location of the
         robot tag corners, update the laser axis from the robot tag location 
         """
-        lasDir = self.position + [1,0]*exp(1j*(self.laserHeading)) # + add noise
+        print(type(self.laserHeading))
+        d = [cos(self.laserHeading),sin(self.laserHeading)]
+        lasDir = self.position + d # + add noise
         self.laserAxis = [self.position,lasDir]
 
         z = dot(self.tagPos,[1,1j])
         c = mean(z)
-        zr = c + (z-c) * exp(1j * (direct*self.dtheta+randn()*self.aNoise)) # think more about this noise -- maybe gaussian?
+        zr = c + (z-c) * exp(1j * ((self.tagAngle-self.oldTag)+randn()*self.aNoise)) # think more about this noise -- maybe gaussian?
+
         self.tagPos[:,0] = zr.real
         self.tagPos[:,1] = zr.imag
 
-
+        self.oldTag = self.tagAngle
         #self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
         #da = dot([1,-1],self.laserAxis)
         #self.laserAxis[1] += randn(2) * sqrt(sum(da*da)) * 0.01
