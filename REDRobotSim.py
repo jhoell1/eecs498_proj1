@@ -49,9 +49,11 @@ class REDRobotSim( RobotSimInterface ):
 
     def unitRobotMove(self,direct):
         '''
-        This function will move the robot's tag points a distance dforward in the direction of it's heading  
+        This function will move the robot's tag points a distance dforward either forward or backward 
+        along the direction of it's heading  
         '''
-        self.tagPos += self.dfowrward  * [cos(self.heading),sin(self.heading)]
+        assert(direct == 1 or direct == -1)
+        self.tagPos += self.dfowrward*direct * [cos(self.heading),sin(self.heading)]
 
 
     def unitRobotRotate(self,direct):
@@ -65,6 +67,7 @@ class REDRobotSim( RobotSimInterface ):
     def unitTagRotate(self,direct):
         """
         Turn tag by dtheta
+        SHOULDN'T THIS UPDATE THE POSITION OF THE TAG POINTS TOO!!!
         """
         assert(direct==-1 or direct==1)
         self.tagAngle += self.dtheta*direct + self.servoNoise()
