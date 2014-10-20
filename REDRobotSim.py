@@ -15,6 +15,9 @@ from pdb import set_trace as DEBUG
 class REDRobotSim( RobotSimInterface ):
     def __init__(self, *args, **kw):
         RobotSimInterface.__init__(self, *args, **kw)
+        '''
+        might we want to initialize these to be pointing in the positive y direction?
+        '''
         self.heading = 0.0 #absolute heading from arena +x --> information not accesible to simulation 
         self.laserHeading = 0.0 #absolute from arena +x --> information not accesible to simulation
         self.tagAngle = 0.0 #wrt heading
@@ -69,18 +72,11 @@ class REDRobotSim( RobotSimInterface ):
 
 
     def unitRobotMove(self,direct):
-<<<<<<< HEAD
-        '''
-        This function will move the robot's tag points a distance dforward either forward or backward 
-        along the direction of it's heading  
-        '''
-        assert(direct == 1 or direct == -1)
-        self.tagPos += self.dfowrward*direct * [cos(self.heading),sin(self.heading)]
-=======
+
         assert(direct==1 or direct == -1)
         self.position += array([cos(self.heading),sin(self.heading)])*self.dforward*sign(direct)
         self.tagPos += array([1,0])*exp(1j*self.heading)*self.dforward*direct
->>>>>>> 92c49f70d2b9c2778df20dba46ddba27fc4f1668
+
 
 
     def unitRobotRotate(self,direct):
@@ -94,7 +90,6 @@ class REDRobotSim( RobotSimInterface ):
     def unitTagRotate(self,direct):
         """
         Turn tag by dtheta
-        SHOULDN'T THIS UPDATE THE POSITION OF THE TAG POINTS TOO!!!
         """
         assert(direct==-1 or direct==1)
         self.tagAngle += self.dtheta*direct + self.servoNoise()
