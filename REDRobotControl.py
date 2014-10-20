@@ -66,8 +66,9 @@ def path_find(robot):
         robot.robot_forward(step_length);
         s1 = update_sensor(1);
         s2 = update_sensor(2);
+    robot.robot_turn(-pi/2);
     dcalib = calib_drift(robot);
-    robot.robot_turn(-pi/2-dcalib);
+    robot.robot_turn(dcalib);
     
     
 def calib_drift(robot):
@@ -77,8 +78,11 @@ def calib_drift(robot):
     s1_new = update_sensor(1);
     s2_new = update_sensor(2);
     drift_guess1 = asin((s1_old-s1_new)/step_length);
-    drift_guess2 = asin((s2-old-s2_new)/step_length);
-    return (drift_guess1+drift_guess2)/2
+    drift_guess2 = asin((-s2_old+s2_new)/step_length);
+    direction = 1;
+    if(s2_new > s2_old):
+        direction = -1;
+    return direciton*(drift_guess1+drift_guess2)/2
         
 
 # sensor1 should always on the left of moving direction
