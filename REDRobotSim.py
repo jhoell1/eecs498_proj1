@@ -3,37 +3,55 @@ from json import dumps as json_dumps
 from numpy import asfarray, dot, c_, newaxis, mean, exp, sum, sqrt
 from numpy.linalg import svd
 from numpy.random import randn
+from scipy import pi
 from waypointShared import *
 from robotSim import *
 
 from pdb import set_trace as DEBUG
 
-#BLAH
+
 
 class REDRobotSim( RobotSimInterface ):
   def __init__(self, *args, **kw):
     RobotSimInterface.__init__(self, *args, **kw)
-    self.heading = 0 #absolute heading --> information not accesible to simulation
+    self.heading = 0 #absolute heading --> information not accesible to simulation 
     self.laserHeading = 0 #wrt heading
     self.tagAngle = 0 #wrt heading
     self.dNoise = 0.1
     self.aNoise = 0.1
+    global dtheta=.001;
+    global dS=.001;
+    
+
 
     #write functions to control robot
+  
+  def unitRotateLaser(self, direct)
+	#This will rotate the robot's laserheading a unit step dtheta
+	#also will update alpha. direct has to be +1 or -1
+	assert(direct == 1 or direct == -1); 
+	self.laserheading = self.laserheading+dtheta*direct;
 
 
 
-  def move( self, dist ):
+  def moveForward( self, dist ):
 
     """
-    Move forward some distance
+    Move forward some distance 
     """
-    # Compute a vector along the forward direction
-    fwd = dot([1,-1,-1,1],self.tagPos)/2
-    # Move all tag corners forward by distance, with some noise
-    self.tagPos = self.tagPos + fwd[newaxis,:] * dist * (1+randn()*self.dNoise)
+	deltaX = dist*cos(self.heading);
+	deltaY = dist*sin(self.heading);
+	
+ 	
+	
+	self.tagpos = self.tagpos+ ([[deltaX, deltaY], [deltaX, deltaY], [deltaX, deltaY], [deltaX, deltaY]]);
 
-  def turn( self, angle ):
+	
+
+ 
+
+
+ def turn( self, angle ):
     """
     Turn by some angle
     """
@@ -43,6 +61,13 @@ class REDRobotSim( RobotSimInterface ):
     self.tagPos[:,0] = zr.real
     self.tagPos[:,1] = zr.imag
     
+  def rotate_unit(self, direct):
+	#This will rotate the robot's heading a unit step dtheta, and update all tag points
+	#also will update alpha. direct has to be +1 or -1
+	assert(direct == 1 or direct == -1); 
+	self.heading = self.heading+dtheta*direct;
+	turn(self, direct* dtheta);
+
 
   #implement this function
   def refreshState( self ):
