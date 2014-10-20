@@ -97,14 +97,16 @@ class REDRobotSim( RobotSimInterface ):
         STUB Need to figure out how to model ground interaction noise i.e slip 
         Items to consider:
         Slip on the ground
+        This error is parasitic in the sense that it detracts from the actual forward or rotational motion that
+        the robot exhibits in the arena.
 
         """
 
 
         slipConstant = .007 #small a small portion of error that is introduced by the robot's wheels slippong on the carpet
-        
+        robotTilt = .05 #error caused by the fact that the robot rocks back and forth on it's caster legs
 
-        return slipConstant
+        return -1*(slipConstant+ robotTilt)
 
     #implement this function
     def refreshState( self ):
