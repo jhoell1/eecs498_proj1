@@ -24,10 +24,7 @@ class REDRobotSim( RobotSimInterface ):
         self.dtheta= 0.1 #.001
         self.dforward = 0.1
         self.dS=.001
-
         self.oldTag = 0.0
-
-
 
     #write functions to control robot
 
@@ -59,7 +56,6 @@ class REDRobotSim( RobotSimInterface ):
         while(abs(self.laserHeading-finalLaser) > self.dtheta):
             self.unitLaserRotate(direct)
 
-
     def tagRotate(self, angle):
         while (angle > pi):
             angle -= 2*pi;
@@ -76,7 +72,6 @@ class REDRobotSim( RobotSimInterface ):
         assert(direct==1 or direct == -1)
         self.position += array([cos(self.heading),sin(self.heading)])*self.dforward*sign(direct)
         self.tagPos += array([1,0])*exp(1j*self.heading)*self.dforward*direct
-
 
 
     def unitRobotRotate(self,direct):
@@ -104,20 +99,57 @@ class REDRobotSim( RobotSimInterface ):
     def servoNoise(self):
         """
         STUB Need to figure out how to model servo noise
+        Things to consider here 
+        backlash/play
+        Encoder dead zone
+
         """
-        return 0
+
+        play = .001 #some small value that the servo is allowed move to before motion is detected by the encoder
+        electricalNoise = .01*randn() #Electrical gaussian noise in the servo's encoding sensor
+        
+        #The encoder's this dead zone may introuce additional random error
+        deadzoneError = 0
+
+        return play+electricalNoise+deadzoneError
 
     #def cameraNoise(self):
     #    """
     #    STUB Need to figure out how to model camera noise
+    #   NO! not doing it.
     #   """
     #    return 0
+    def diameterError():
+        leftDiameter = 5.00
+        rightDiameter= 5.00
+
+        dRatio = leftDiameter/rightDiameter
+
+        return dRatio
+
+    def wheelMisalignment():
+        """
+        This error constant is meant to model the slight shift in alignment that can be brought on by
+        wheels that are out of alignment
+        """
+        #wheel skew 
+
+        return 0
+
 
     def groundInteractionNoise(self):
         """
-        STUB Need to figure out how to model ground interaction noise i.e slip and stuff like that
+        STUB Need to figure out how to model ground interaction noise i.e slip 
+        Items to consider:
+        Slip on the ground
+        This error is parasitic in the sense that it detracts from the actual forward or rotational motion that
+        the robot exhibits in the arena.
+
         """
-        return 0
+        slipConstant = .007 #small a small portion of error that is introduced by the robot's wheels slippong on the carpet
+        robotTilt = .05 #error caused by the fact that the robot rocks back and forth on it's caster legs
+
+        return -1*(slipConstant+ robotTilt)
 
     #implement this function
     def refreshState( self ):
@@ -136,6 +168,7 @@ class REDRobotSim( RobotSimInterface ):
         z = dot(self.tagPos,[1,1j])
         c = mean(z)
         zr = c + (z-c) * exp(1j * ((self.tagAngle-self.oldTag)+randn()*self.aNoise)) # think more about this noise -- maybe gaussian?
+
         self.tagPos[:,0] = zr.real
         self.tagPos[:,1] = zr.imag
 
