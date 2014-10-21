@@ -18,13 +18,14 @@ class REDRobotSim( RobotSimInterface ):
         self.heading = 0.0 #absolute heading from arena +x --> information not accesible to simulation 
         self.laserHeading = 0.0 #absolute from arena +x --> information not accesible to simulation
         self.tagAngle = 0.0 #wrt heading
-        self.position = asfarray([0.0,0.0])
+        self.position = asfarray([[0.0],[0.0]])
         self.dNoise = 0.01
         self.aNoise = 0.01
-        self.dtheta= 0.1 #.001
+        self.dtheta= 0.2 #.001
         self.dforward = 0.1
         self.dS=.001
         self.oldTag = 0.0
+        self.oldDist = 0.0
 
     #write functions to control robot
 
@@ -52,7 +53,7 @@ class REDRobotSim( RobotSimInterface ):
             angle += 2*pi;
 
         direct = sign(angle)
-        finalLaser = self.laserHeading
+        finalLaser = self.laserHeading + angle
         while(abs(self.laserHeading-finalLaser) > self.dtheta):
             self.unitLaserRotate(direct)
 
@@ -63,15 +64,30 @@ class REDRobotSim( RobotSimInterface ):
             angle += 2*pi;
 
         direct = sign(angle)
-        finalTag = self.tagAngle
+        finalTag = self.tagAngle + angle
         while(abs(self.tagAngle-finalTag) > self.dtheta):
             self.unitTagRotate(direct)
 
 
     def unitRobotMove(self,direct):
         assert(direct==1 or direct == -1)
-        self.position += array([cos(self.heading),sin(self.heading)])*self.dforward*sign(direct)
-        self.tagPos += array([1,0])*exp(1j*self.heading)*self.dforward*direct
+
+        # Compute a vector along the forward direction
+        fwd = dot([1,-1,-1,1],self.tagPos)/2
+        fwd2 = dot(fwd,[1,1j])
+        fwd2 = fwd2 * exp(1j * ((self.heading-self.tagAngle)+randn()*self.aNoise))
+        print(type(fwd))
+        print(fwd)
+        print(fwd2)
+        print(fwd2.real)
+        print(fwd2.imag)
+        fwd[0] = fwd2.real
+        fwd[1] = fwd2.imag
+        # Move all tag corners forward by distance, with some noise
+        self.tagPos = self.tagPos + fwd[newaxis,:] * self.dforward*direct * (1+randn()*self.dNoise)
+
+        #self.position += dot(asfarray([[cos(self.heading),-sin(self.heading)],[sin(self.heading),cos(self.heading)]]),asfarray([[self.dforward*sign(direct)],0]))
+        self.refreshState()
 
 
     def unitRobotRotate(self,direct):
@@ -79,8 +95,9 @@ class REDRobotSim( RobotSimInterface ):
         #also will update alpha. direct has to be +1 or -1
         assert(direct == 1 or direct == -1)
         self.heading = self.heading+self.dtheta*direct + self.groundInteractionNoise()
-        self.unitLaserRotate(direct*-1)
+        #self.unitLaserRotate(direct*-1)
         self.unitTagRotate(direct)
+        self.refreshState()
 
     def unitTagRotate(self,direct):
         """
@@ -88,12 +105,14 @@ class REDRobotSim( RobotSimInterface ):
         """
         assert(direct==-1 or direct==1)
         self.tagAngle += self.dtheta*direct + self.servoNoise()
+        self.refreshState()
 
     def unitLaserRotate(self, direct):
         #This will rotate the robot's laserheading a unit step dtheta
         #also will update alpha. direct has to be +1 or -1
         assert(direct == 1 or direct == -1)
         self.laserHeading = self.laserHeading+self.dtheta*direct + self.servoNoise()
+        self.refreshState()
 
 
     def servoNoise(self):
@@ -153,17 +172,19 @@ class REDRobotSim( RobotSimInterface ):
 
     #implement this function
     def refreshState( self ):
-        """
-        Make state ready for use by client.
 
-        ALGORITHM:
-        Since the entire robot state is captured by the location of the
-        robot tag corners, update the laser axis from the robot tag location 
-        """
-        print(type(self.laserHeading))
-        d = [cos(self.laserHeading),sin(self.laserHeading)]
-        lasDir = self.position + d # + add noise
-        self.laserAxis = [self.position,lasDir]
+        #d = [cos(self.laserHeading),sin(self.laserHeading)]
+        #lasDir = self.position + d # + add noise
+        #self.laserAxis = [self.position,lasDir]
+        #print("LASERAXIS:")
+        #print(self.laserAxis)
+
+        self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
+        da = dot([1,-1],self.laserAxis)
+        self.laserAxis[1] += randn(2) * sqrt(sum(da*da)) * 0.01
+        zx = dot(self.laserAxis,[1,1j])*exp(1j * ((self.laserHeading-self.tagAngle)+randn()*self.aNoise))
+        self.laserAxis[:,0] = zx.real
+        self.laserAxis[:,1] = zx.imag
 
         z = dot(self.tagPos,[1,1j])
         c = mean(z)
@@ -171,6 +192,7 @@ class REDRobotSim( RobotSimInterface ):
 
         self.tagPos[:,0] = zr.real
         self.tagPos[:,1] = zr.imag
+
 
         self.oldTag = self.tagAngle
         #self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
