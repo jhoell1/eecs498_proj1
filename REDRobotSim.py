@@ -11,7 +11,6 @@ from joy import progress
 from pdb import set_trace as DEBUG
 
 
-
 class REDRobotSim( RobotSimInterface ):
     def __init__(self, *args, **kw):
         RobotSimInterface.__init__(self, *args, **kw)
