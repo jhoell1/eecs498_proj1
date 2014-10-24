@@ -10,7 +10,16 @@ from joy import progress
 
 from pdb import set_trace as DEBUG
 
-class REDRobotDriver():
+class REDRobotDriver(JoyApp):
+
+    def __init__(self, right_wheel, left_wheel, *arg, **kw):
+        JoyApp.__init__(self, *arg, **kw)
+        self.right_wheel = right_wheel
+        self.left_wheel = left_wheel
+
+
+    def onStart(self):
+        
     def robotMove(self,numSteps,direct):
         assert(direct==-1 or direct==1)
         for i in range(0,numSteps):
@@ -54,9 +63,11 @@ class REDRobotDriver():
     def unitRobotMove(self,direct):
 
         assert(direct==1 or direct == -1)
-
-
-
+        self.right_wheel.set_torque(.4*direct)
+        self.left_wheel.set_torque(-.4*direct)
+        yield self.forDuration(1)
+        self.right_wheel.set_torque(0)
+        self.left_wheel.set_torque(0)
 
 
     def unitRobotRotate(self,direct):
