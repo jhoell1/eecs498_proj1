@@ -77,8 +77,8 @@ if __name__ == "__main__":
 	timeout = 3
 	while(t2<(t1+timeout)):
 		t2 = time.time()
-		right_wheel.set_torque(-.3)
-		left_wheel.set_torque(.3)
+		right_wheel.set_torque(-.6)
+		left_wheel.set_torque(.6)
 		time.sleep(.02)
 		b=a
 		a = right_wheel.get_pos()
@@ -88,10 +88,12 @@ if __name__ == "__main__":
 
 		print "angular vlocity:"
 		print angVel
+	t1 = time.time()
+	t2 = time.time()
 	while(t2<(t1+timeout)):
 		t2 = time.time()
-		right_wheel.set_torque(.3)
-		left_wheel.set_torque(-.3)
+		right_wheel.set_torque(.6)
+		left_wheel.set_torque(-.6)
 		time.sleep(.02)
 		b=a
 		a = right_wheel.get_pos()

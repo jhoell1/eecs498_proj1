@@ -10,16 +10,59 @@ from joy import progress
 
 from pdb import set_trace as DEBUG
 
-class REDRobotDriver(JoyApp):
+class REDRobotDriver():
 
-    def __init__(self, right_wheel, left_wheel, *arg, **kw):
-        JoyApp.__init__(self, *arg, **kw)
+    def __init__(self, right_wheel, left_wheel, laser_servo, tag_servo, torque, *arg, **kw):
+        print "initializing REDRobot driver"
         self.right_wheel = right_wheel
         self.left_wheel = left_wheel
+        self.laser_serv = laser_servo
+        self.tag_serv = tag_servo
+        self.torque = torque
+        self.time_step = 0.1
+
+########################################################################################
+###                             ROBOT MICRO MOVEMENTS                                ###
+
+    def unitRobotMove(self,direct):
+        print "Moving robot forward by unit"
+        assert(direct==1 or direct == -1)
+        self.right_wheel.set_torque(self.torque*direct)
+        self.left_wheel.set_torque(-self.torque*direct)
+        yield self.forDuration(self.time_step)
+        self.right_wheel.set_torque(0)
+        self.left_wheel.set_torque(0)
 
 
-    def onStart(self):
-        
+    def unitRobotRotate(self,direct):
+        print "Rotating robot by unit"
+        #This will rotate the robot's heading a unit step dtheta, and update all tag points
+        #also will update alpha. direct has to be +1 or -1
+        assert(direct == 1 or direct == -1)
+        self.right_wheel.set_torque(self.torque*direct)
+        self.left_wheel.set_torque(self.torque*direct)
+        yield self.forDuration(self.time_step)
+        self.right_wheel.set_torque(0)
+        self.left_wheel.set_torque(0)
+
+
+    def unitTagRotate(self,direct):
+        """
+        Turn tag by dtheta
+        """
+        assert(direct==-1 or direct==1)
+        self.tag_serv.set_torque(self.torque*direct)
+        yield self.forDuration(self.time_step)
+        self.tag_serv.set_torque(0)
+
+    def unitLaserRotate(self, direct):
+        #This will rotate the robot's laserheading a unit step dtheta
+        #also will update alpha. direct has to be +1 or -1
+        assert(direct==-1 or direct==1)
+        self.laser_serv.set_torque(self.torque*direct)
+        yield self.forDuration(self.time_step)
+        self.laser_serv.set_torque(0)
+
     def robotMove(self,numSteps,direct):
         assert(direct==-1 or direct==1)
         for i in range(0,numSteps):
@@ -60,34 +103,6 @@ class REDRobotDriver(JoyApp):
             self.unitTagRotate(direct)
 
 
-    def unitRobotMove(self,direct):
-
-        assert(direct==1 or direct == -1)
-        self.right_wheel.set_torque(.4*direct)
-        self.left_wheel.set_torque(-.4*direct)
-        yield self.forDuration(1)
-        self.right_wheel.set_torque(0)
-        self.left_wheel.set_torque(0)
-
-
-    def unitRobotRotate(self,direct):
-        #This will rotate the robot's heading a unit step dtheta, and update all tag points
-        #also will update alpha. direct has to be +1 or -1
-        assert(direct == 1 or direct == -1)
-
-
-
-    def unitTagRotate(self,direct):
-        """
-        Turn tag by dtheta
-        """
-        assert(direct==-1 or direct==1)
-
-
-    def unitLaserRotate(self, direct):
-        #This will rotate the robot's laserheading a unit step dtheta
-        #also will update alpha. direct has to be +1 or -1
-        assert(direct == 1 or direct == -1)
 
 
 
