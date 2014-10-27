@@ -70,22 +70,22 @@ class REDRobotSimulatorApp( JoyApp ):
         self.robSim.robotMove(10,-1)
         return progress("(say) Move back")
       elif evt.key == K_LEFT:
-        self.robSim.robotTurn(-pi/4)
+        self.robSim.robotTurn(-pi/16.0)
         return progress("(say) Turn left")
       elif evt.key == K_RIGHT:
-        self.robSim.robotTurn(pi/4.0)
+        self.robSim.robotTurn(pi/16.0)
         return progress("(say) Turn right")
       elif evt.key == K_a:
-        self.robSim.laserRotate(-pi/4.0)
+        self.robSim.laserRotate(-pi/16.0)
         return progress("(say) Rotate Laser left")
       elif evt.key == K_s:
-        self.robSim.laserRotate(pi/4.0)
+        self.robSim.laserRotate(pi/16.0)
         return progress("(say) Rotate Laser right")
       elif evt.key == K_q:
-        self.robSim.tagRotate(-pi/4.0)
+        self.robSim.tagRotate(-pi/16.0)
         return progress("(say) Rotate tag left")
       elif evt.key == K_w:
-        self.robSim.tagRotate(pi/4.0)
+        self.robSim.tagRotate(pi/16.0)
         return progress("(say) Rotate tag right")
     # Use superclass to show any other events
     return JoyApp.onEvent(self,evt)

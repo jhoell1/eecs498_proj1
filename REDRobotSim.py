@@ -9,6 +9,7 @@ from robotSim import *
 from joy import progress
 
 from pdb import set_trace as DEBUG
+import os
 
 
 class REDRobotSim( RobotSimInterface ):
@@ -23,7 +24,7 @@ class REDRobotSim( RobotSimInterface ):
         self.position = asfarray([[0.0],[0.0]])
         self.dNoise = 0.01
         self.aNoise = 0.01
-        self.dtheta= 0.2 #.001
+        self.dtheta= 0.01 #.001
         self.dforward = 0.1
         self.dS=.001
         self.oldTag = 0.0
@@ -79,11 +80,6 @@ class REDRobotSim( RobotSimInterface ):
         fwd = dot([1,-1,-1,1],self.tagPos)/2
         fwd2 = dot(fwd,[1,1j])
         fwd2 = fwd2 * exp(1j * ((self.heading-self.tagAngle)+randn()*self.aNoise))
-        print(type(fwd))
-        print(fwd)
-        print(fwd2)
-        print(fwd2.real)
-        print(fwd2.imag)
         fwd[0] = fwd2.real
         fwd[1] = fwd2.imag
         # Move all tag corners forward by distance, with some noise
@@ -199,6 +195,14 @@ class REDRobotSim( RobotSimInterface ):
 
 
         self.oldTag = self.tagAngle
+
+        #output current state:
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print "Current State: "
+        print "heading" + repr(self.heading)
+        print "tag Angle: " + repr(self.tagAngle)
+        print "Laser Angle" + repr(self.laserHeading)
+
         #self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
         #da = dot([1,-1],self.laserAxis)
         #self.laserAxis[1] += randn(2) * sqrt(sum(da*da)) * 0.01
