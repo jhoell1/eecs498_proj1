@@ -75,6 +75,7 @@ def path_transition(robot, old_w1, old_w2, w1, w2):
 	old_line_angle = get_line_angle(old_w1, old_w2)
 	new_line_angle = get_line_angle(w1, w2)
 	robot.robot_turn(-(new_line_angle - old_line_angle))
+	robot.tag_turn(-(new_line_angle - old_line_angle))
 
 def path_follow(robot, w1, w2):
 #dont really need this function anymore
