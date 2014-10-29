@@ -57,7 +57,7 @@ def get_WP():
 	return current_WP_list
 
 
-def WP_updated(waypont_list):
+def WP_updated(waypoint_list):
 	#returns true if new waypoint list is different length than old wp list
 	wp_n = get_WP()
 	if(wp_n.len == waypoint_list.len):

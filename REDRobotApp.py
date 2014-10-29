@@ -15,6 +15,7 @@ from robotSim import *
 from joy import progress
 
 from pdb import set_trace as DEBUG
+from sensorPlan import sensorPlan
 
 class REDRobotApp( JoyApp):
 
@@ -33,8 +34,18 @@ class REDRobotApp( JoyApp):
 
     def onStart(self):
         print "Initialzing the robot"
+        self.sensor = SensorPlan(self)
+        self.sensor.start()
+        self.timeForUpdate = self.onceEvery(1/20.0)
 
     def onEvent(self, evt):
+
+        if self.timeForUpdate():
+            ts,f,b = self.sensor.lastSensor
+            ts2, w = self.sensor.lastWaypoint
+
+
+
         if evt.type == KEYDOWN:
             if evt.key == K_UP:
                 self.robot.unitRobotMove(1)

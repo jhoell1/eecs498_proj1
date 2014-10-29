@@ -24,6 +24,8 @@ class REDRobotDriver():
 ########################################################################################
 ###                             ROBOT MICRO MOVEMENTS                                ###
 
+#### TODO!!!!: MAP TIME ROTATIONS TO ANGLES!!!!!!
+
     def unitRobotMove(self,direct):
         print "Moving robot forward by unit"
         assert(direct==1 or direct == -1)

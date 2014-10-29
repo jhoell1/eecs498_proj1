@@ -24,7 +24,7 @@ class REDRobotSim( RobotSimInterface ):
         self.position = asfarray([[0.0],[0.0]])
         self.dNoise = 0.01
         self.aNoise = 0.01
-        self.dtheta= 0.01 #.001
+        self.dtheta= 0.1 #.001
         self.dforward = 0.1
         self.dS=.001
         self.oldTag = 0.0
@@ -89,12 +89,11 @@ class REDRobotSim( RobotSimInterface ):
         self.refreshState()
 
 
-
     def unitRobotRotate(self,direct):
         #This will rotate the robot's heading a unit step dtheta, and update all tag points
         #also will update alpha. direct has to be +1 or -1
         assert(direct == 1 or direct == -1)
-        self.heading = self.heading+self.dtheta*direct + self.groundInteractionNoise()
+        self.heading = self.heading+self.dtheta*direct #+ self.groundInteractionNoise()
         #self.unitLaserRotate(direct*-1)
         self.unitTagRotate(direct)
         self.refreshState()
@@ -105,6 +104,8 @@ class REDRobotSim( RobotSimInterface ):
         """
         assert(direct==-1 or direct==1)
         self.tagAngle += self.dtheta*direct + self.servoNoise()
+        print "NOISE:"
+        print self.servoNoise()
         self.refreshState()
 
     def unitLaserRotate(self, direct):
@@ -197,7 +198,7 @@ class REDRobotSim( RobotSimInterface ):
         self.oldTag = self.tagAngle
 
         #output current state:
-        os.system('cls' if os.name == 'nt' else 'clear')
+        #os.system('cls' if os.name == 'nt' else 'clear')
         print "Current State: "
         print "heading" + repr(self.heading)
         print "tag Angle: " + repr(self.tagAngle)
