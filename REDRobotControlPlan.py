@@ -8,11 +8,9 @@ from waypointShared import *
 class REDRobotControlPlan ( Plan ):
 
 	def __init__( self, app, robotDriver, *arg, **kw ):
-    	Plan.__init__(self, app, *arg, **kw )
+		Plan.__init__(self, app, *arg, **kw )
 		self.robot = robotDriver
 		self.autonomous = False 
-
-
 
 	def lookup_Sensor_Nonlin(y):
 	  if(y < 0):
@@ -65,8 +63,8 @@ class REDRobotControlPlan ( Plan ):
 		return lookup_Sensor_Nonlin(sns_dat)
 
 
-	def get_WP():
-		return current_WP_list
+	def get_WP(self):
+		return self.current_WP_list
 
 	def go_autonomous(self):
 		self.autonomous = True
@@ -91,7 +89,7 @@ class REDRobotControlPlan ( Plan ):
 		new_line_angle = get_line_angle(w1, w2)
 		self.robot.robot_turn(-(new_line_angle - old_line_angle))
 
-	def path_follow(robot, w1, w2):
+	#def path_follow(robot, w1, w2):
 	#dont really need this function anymore
 	#def path_follow(robot, w1, w2):
 		# slope = (w2.y - w1.y) / (w2.x - w1.x)
@@ -126,19 +124,18 @@ class REDRobotControlPlan ( Plan ):
 	         #   robot.robot_forward(step_length);
 	          #  s1 = self.getSensorVal(1)
 	           # s2 = self.getSensorVal(2)
-
 	def getSensorVal(self,num):
-	    if(num == 1):
-	        return self.sensor_1
-	    if(num == 2):
-	        return self.sensor_2
+		if(num == 1):
+			return self.sensor_1
+		if(num == 2):
+			return self.sensor_2
 
-    def update_waypoint(self,waypointList):
-    	self.current_WP_list = waypointList
+	def update_waypoint(self,waypointList):
+		self.current_WP_list = waypointList
 
-    def update_sensor_values(self,f,b):
-    	self.sensor_1 = f
-    	self.sensor_2 = b
+	def update_sensor_values(self,f,b):
+		self.sensor_1 = f
+		self.sensor_2 = b
 
 	def path_find(self):
 	    self.robot.robot_turn(pi/2);
@@ -146,9 +143,9 @@ class REDRobotControlPlan ( Plan ):
 	    s2 = get_Filtered_S_Value(2);
 	    th = .01;
 	    while(abs(s1-s2) > th):
-	        self.robot.robot_forward(step_length);
-	    	s1 = get_Filtered_S_Value(1)
-	   		s2 = get_Filtered_S_Value(2);
+			self.robot.robot_forward(step_length)
+			s1 = get_Filtered_S_Value(1)
+			s2 = get_Filtered_S_Value(2)
 	    self.robot.robot_turn(-pi/2);
 	    dcalib = calib_drift(robot);
 	    self.robot.robot_turn(dcalib);
@@ -190,13 +187,10 @@ class REDRobotControlPlan ( Plan ):
 			while(wp_reached == 0):
 				#path_follow(robot, w1, w2)
 			    self.robot.robot_forward(step_length);
-			    
 			    wp_reached = WP_updated(waypoints)
-
-	            
-	            if(wp_reached == 0):
-	            	s1 = get_Filtered_S_Value(1)
-	            	s2 = get_Filtered_S_Value(2)
+			    if(wp_reached == 0):
+					s1 = get_Filtered_S_Value(1)
+					s2 = get_Filtered_S_Value(2)
 
 	            	if(abs(s1-s2) > follow_th):
 	                	self.path_find();

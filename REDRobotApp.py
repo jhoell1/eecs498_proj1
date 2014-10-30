@@ -15,7 +15,9 @@ from robotSim import *
 from joy import progress
 
 from pdb import set_trace as DEBUG
-from sensorPlan import sensorPlan
+from sensorPlan import SensorPlan
+
+from REDRobotControlPlan import REDRobotControlPlan
 
 class REDRobotApp( JoyApp):
 
@@ -73,11 +75,11 @@ class REDRobotApp( JoyApp):
 
 if __name__ == "__main__":
 
-    numservos = 4
+    numservos = 2
     c = L.Cluster()
     c.populate(count = numservos)
 
     scr = None
 
-    app = REDRobotApp(c.at.Nx02,c.at.Nx18)
+    app = REDRobotApp(c.at.Nx02,c.at.Nx18,c.at.Nx02,c.at.Nx18)
     app.run()

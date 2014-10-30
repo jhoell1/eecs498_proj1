@@ -10,6 +10,7 @@ from joy import progress
 
 from pdb import set_trace as DEBUG
 
+
 class REDRobotDriver():
 
     def __init__(self, right_wheel, left_wheel, laser_servo, tag_servo, torque, *arg, **kw):
