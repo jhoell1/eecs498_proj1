@@ -6,6 +6,7 @@ from joy import JoyApp, progress
 from joy.decl import *
 from waypointShared import WAYPOINT_HOST, APRIL_DATA_PORT
 from scipy import pi
+from REDRobotControl import*
 
 class REDRobotSimulatorApp( JoyApp ):
   """Concrete class RobotSimulatorApp <<singleton>>
@@ -29,6 +30,9 @@ class REDRobotSimulatorApp( JoyApp ):
     self.timeForStatus = self.onceEvery(1)
     self.timeForLaser = self.onceEvery(1/15.0)
     self.timeForFrame = self.onceEvery(1/20.0)
+
+ 
+
     progress("Using %s:%d as the waypoint host" % self.srvAddr)
 
   def showSensors( self ):
@@ -62,7 +66,14 @@ class REDRobotSimulatorApp( JoyApp ):
     if self.timeForFrame(): 
       self.emitTagMessage()
 
+
     if evt.type == KEYDOWN:
+
+      if evt.key == K_c:
+        print('enter')
+        controller(self, self.robSim, self.sensor)
+        print('exit')
+
       if evt.key == K_UP:
         self.robSim.robotMove(10,1)
         return progress("(say) Move forward")

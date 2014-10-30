@@ -1,4 +1,7 @@
-import numpy
+from numpy import*
+from REDRobotSim import *
+from REDsimTagStreamer import *
+from joy import*
 step_length = 10
 
 
@@ -24,43 +27,49 @@ def lookup_Sensor_Nonlin(y):
       low_bdx = i-1;
       break
 
-  low_y = data[low_bd]
-  up_y = data[up_bd]
+  low_y = data[low_bdx]
+  up_y = data[up_bdx]
 
 
   if(low_y == y):
-    return low_bd
+    return low_bdx
   if(up_y == y):
-    return up_bd;
+    return up_bdx;
 
 
-  m = (up_y-low_y)/(up_bd*steps-low_bd*steps);
-  b = up_y-m*up_bd*steps;
+  m = (up_y-low_y)/(up_bdx*steps-low_bdx*steps);
+  b = up_y-m*up_bdx*steps;
 
 
   return (y-b)/m
 
 
-def get_Filtered_S_Value(snum):
+def get_Filtered_S_Value(snum, splan):
 	
 	n = 10;
 	vals = [0]*n
 
 	for i in range(0,n):
 		#read the value at sensor snum
-		vals[i] = update_sensor(snum)
+		vals[i] = update_sensor(snum, splan)
 	sns_dat = mean(vals)
 	return lookup_Sensor_Nonlin(sns_dat)
 
 
-def get_WP():
-	return current_WP_list
+def get_WP(splan):
 
+	ts, w = splan.lastWaypoints
+	print ts
+	while(len(w) == 0):
+		ts,w = splan.lastWaypoints
+		if(len(w) != 0):
+			return w
+	return w
 
-def WP_updated(waypoint_list):
+def WP_updated(waypoint_list, splan):
 	#returns true if new waypoint list is different length than old wp list
-	wp_n = get_WP()
-	if(wp_n.len == waypoint_list.len):
+	wp_n = get_WP(splan)
+	if(len(wp_n) == len(waypoint_list)):
 		return 0;
 	return 1;
 
@@ -76,71 +85,48 @@ def path_transition(robot, old_w1, old_w2, w1, w2):
 	new_line_angle = get_line_angle(w1, w2)
 	robot.robot_turn(-(new_line_angle - old_line_angle))
 	robot.tag_turn(-(new_line_angle - old_line_angle))
-
-def path_follow(robot, w1, w2):
-#dont really need this function anymore
-#def path_follow(robot, w1, w2):
-	# slope = (w2.y - w1.y) / (w2.x - w1.x)
-	# line_anlge = math.atan(slope) # in radians (-pi/2, pi/2)
-	# if line_anlge < 0:
-	# 	line_anlge = math.pi + line_anlge
-	# old_s1 = update_sensor(1)
-	# old_s2 = update_sensor(2)
-	# robot.robot_forward(step_length)
-	# new_s1 = update_sensor(1)
-	# new_s2 = update_sensor(2)
-	# diff = new_s1 - old_s1
-	# diff_angle = math.asin(diff/step_length)
-	# robot.robot_turn(diff_angle)
-	#### this is a lot like d_calib -- remove i think
-	#old_s1 = update_sensor(1)
-	#old_s2 = update_sensor(2)
-	#robot.robot_forward(step_length)
-	#new_s1 = update_sensor(1)
-	#new_s2 = update_sensor(2)
-	#diff = new_s1 - old_s1
-	#diff_angle = math.asin(diff/step_length)
-	#robot.robot_turn(diff_angle)
-        #######
-	
-        #s1 = update_sensor(1);
-        #s2 = update_sensor(2);
-        #dcalib = calib_drift(robot);
-        #robot.robot_turn(dcalib);
-        #th = .1;
-        #while(abs(s1-s2) < th):
-         #   robot.robot_forward(step_length);
-          #  s1 = update_sensor(1)
-           # s2 = update_sensor(2)
     
         
 
-def update_sensor(num):
-    if(num == 1):
-        return sensor_1
-    if(num == 2):
-        return sensor_2
+def update_sensor(num, splan):
+	ts,f,b = splan.lastSensor
+	while(ts == 0):
+   		ts,f,b = splan.lastSensor
+   		if(ts):
+			if(num == 1):
+   				return f
+			if(num == 2):
+   				return b
+			else:
+   				return -1;
+	if(num == 1):
+		return f
+	if(num == 2):
+		return b
+	else:
+		return 
 
-def path_find(robot):
+
+def path_find(robot, splan):
     robot.robot_turn(pi/2);
-    s1 = get_Filtered_S_Value(1)
-    s2 = get_Filtered_S_Value(2);
+    s1 = get_Filtered_S_Value(1, splan)
+    s2 = get_Filtered_S_Value(2, splan);
     th = .01;
     while(abs(s1-s2) > th):
-        robot.robot_forward(step_length);
-    	s1 = get_Filtered_S_Value(1)
-   		s2 = get_Filtered_S_Value(2);
-    robot.robot_turn(-pi/2);
+		robot.robotMove(step_length, 1);
+		s1 = get_Filtered_S_Value(1, splan);
+		s2 = get_Filtered_S_Value(2, splan);
+    robot.robotTurn(-pi/2);
     dcalib = calib_drift(robot);
-    robot.robot_turn(dcalib);
+    robot.robotTurn(dcalib);
     
     
 def calib_drift(robot):
-    s1_old = get_Filtered_S_Value(1);
-    s2_old = get_Filtered_S_Value(2);
-    robot.robot_forward(step_length);
-    s1_new = get_Filtered_S_Value(1);
-    s2_new = get_Filtered_S_Value(2);
+    s1_old = get_Filtered_S_Value(1, splan);
+    s2_old = get_Filtered_S_Value(2, splan);
+    robot.robotMove(step_length, 1);
+    s1_new = get_Filtered_S_Value(1, splan);
+    s2_new = get_Filtered_S_Value(2, splan);
     drift_guess1 = asin((s1_old-s1_new)/step_length);
     drift_guess2 = asin((-s2_old+s2_new)/step_length);
     direction = 1;
@@ -150,34 +136,94 @@ def calib_drift(robot):
 
 # sensor1 should always on the left of moving direction
 # sensor2 should always on the right of moving direction
-def controller(robot):
-	#THIS SHOUDLD ALWAYS BE RUNNING. IT WILL KEEP TRACK OF Stuff
-	waypoints = get_WP()
 
+def path_find_init(robot, splan):
+	#start with two sensor reading
+	#find direction to go in
+	#rotate tag 90 deg to line
+	#move robot that way
+	s1 = get_Filtered_S_Value(1, splan);
+	s2 = get_Filtered_S_Value(2, splan);
+
+	diff = s1-s2
+	if(diff > 0):
+		direction = 1;
+	if( diff < 0):
+		direction = -1;
+
+	#rotate tag until difference is maximized
+	print("rotating tag until difference is maximized")
+	angle = 0;
+	robot.unitTagRotate(direction);
+	angle = angle + robot.dtheta*direction;
+	s1 = get_Filtered_S_Value(1, splan);
+	s2 = get_Filtered_S_Value(2, splan);
+	diffn = s1 - s2;
+	while(diffn*direction > diff*direction):
+		robot.unitTagRotate(direction)
+		s1 = get_Filtered_S_Value(1, splan);
+		s2 = get_Filtered_S_Value(2, splan);
+		diff = diffn;
+		diffn = s1 - s2;
+		angle = angle + robot.dtheta*direction
+		print("turn")
+
+	#now tag is perpendicular to line
+	robot.robotTurn(angle)
+
+	dt = 1;
+	print("moving robot forward")
+	while(abs(diffn) < dt):
+		print ("bump")
+		robot.robotMove(step_length, direction)
+		s1 = get_Filtered_S_Value(1, splan);
+		s2 = get_Filtered_S_Value(2, splan);
+		diffn = s1-s2;
+
+	#now robot should be straddling line perpendicularly
+	robot.robotTurn(pi/2*direction)		
+
+
+
+
+def controller(strmr, robot, splan):
+	#THIS SHOUDLD ALWAYS BE RUNNING. IT WILL KEEP TRACK OF Stuff
+	print('entered')
+	waypoints = get_WP(splan)
+	print('got waypoints')
 	w_n = waypoints[0]
 	w_c = waypoints[0]
 
 	follow_th = .5
 
-	while(len(waypoint_list)):
+	path_find_init(robot, splan)
+
+	print("entering loop")
+	while(len(waypoints)):
 		wp_reached = 0;
 		#th = 2;
 		while(wp_reached == 0):
-			#path_follow(robot, w1, w2)
-		    robot.robot_forward(step_length);
-		    
-		    wp_reached = WP_updated(waypoints)
 
-            
-            if(wp_reached == 0):
-            	s1 = get_Filtered_S_Value(1)
-            	s2 = get_Filtered_S_Value(2)
+			strmr.showSensors()
+
+			strmr.emitTagMessage()
+			print("entering inner loop")
+			#path_follow(robot, w1, w2)
+			robot.robotMove(step_length, -1);
+			time.sleep(1)
+			print("moved forward")
+			wp_reached = WP_updated(waypoints, splan)
+        	if(wp_reached == 0):
+				s1 = get_Filtered_S_Value(1, splan)
+            	s2 = get_Filtered_S_Value(2, splan)
 
             	if(abs(s1-s2) > follow_th):
-                	path_find(robot);
+                	path_find(robot, splan);
+                	time.sleep(1)
+                	print("should have reached something")
 
 		if(wp_reached):
-			waypoints = get_WP();
+			waypoints = get_WP(splan);
 
 			wp_reached = 0;
 			w_p = w_c;
@@ -185,3 +231,5 @@ def controller(robot):
 			w_n = waypoints[0]
 			
 			path_transition(robot, w_p, w_c, w_c, w_n);
+			time.sleep(1)
+			print("transitioning path")
