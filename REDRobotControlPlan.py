@@ -10,6 +10,7 @@ class REDRobotControlPlan ( Plan ):
 	def __init__( self, app, robotDriver, *arg, **kw ):
     	Plan.__init__(self, app, *arg, **kw )
 		self.robot = robotDriver
+		self.autonomous = False 
 
 
 
@@ -59,13 +60,16 @@ class REDRobotControlPlan ( Plan ):
 
 		for i in range(0,n):
 			#read the value at sensor snum
-			vals[i] = update_sensor(snum)
+			vals[i] = self.getSensorVal(snum)
 		sns_dat = mean(vals)
 		return lookup_Sensor_Nonlin(sns_dat)
 
 
 	def get_WP():
 		return current_WP_list
+
+	def go_autonomous(self):
+		self.autonomous = True
 
 
 	def WP_updated(waypoint_list):
@@ -94,42 +98,47 @@ class REDRobotControlPlan ( Plan ):
 		# line_anlge = math.atan(slope) # in radians (-pi/2, pi/2)
 		# if line_anlge < 0:
 		# 	line_anlge = math.pi + line_anlge
-		# old_s1 = update_sensor(1)
-		# old_s2 = update_sensor(2)
+		# old_s1 = self.getSensorVal(1)
+		# old_s2 = self.getSensorVal(2)
 		# robot.robot_forward(step_length)
-		# new_s1 = update_sensor(1)
-		# new_s2 = update_sensor(2)
+		# new_s1 = self.getSensorVal(1)
+		# new_s2 = self.getSensorVal(2)
 		# diff = new_s1 - old_s1
 		# diff_angle = math.asin(diff/step_length)
 		# robot.robot_turn(diff_angle)
 		#### this is a lot like d_calib -- remove i think
-		#old_s1 = update_sensor(1)
-		#old_s2 = update_sensor(2)
+		#old_s1 = self.getSensorVal(1)
+		#old_s2 = self.getSensorVal(2)
 		#robot.robot_forward(step_length)
-		#new_s1 = update_sensor(1)
-		#new_s2 = update_sensor(2)
+		#new_s1 = self.getSensorVal(1)
+		#new_s2 = self.getSensorVal(2)
 		#diff = new_s1 - old_s1
 		#diff_angle = math.asin(diff/step_length)
 		#robot.robot_turn(diff_angle)
 	        #######
 		
-	        #s1 = update_sensor(1);
-	        #s2 = update_sensor(2);
+	        #s1 = self.getSensorVal(1);
+	        #s2 = self.getSensorVal(2);
 	        #dcalib = calib_drift(robot);
 	        #robot.robot_turn(dcalib);
 	        #th = .1;
 	        #while(abs(s1-s2) < th):
 	         #   robot.robot_forward(step_length);
-	          #  s1 = update_sensor(1)
-	           # s2 = update_sensor(2)
-	    
-	        
+	          #  s1 = self.getSensorVal(1)
+	           # s2 = self.getSensorVal(2)
 
-	def update_sensor(num):
+	def getSensorVal(self,num):
 	    if(num == 1):
-	        return sensor_1
+	        return self.sensor_1
 	    if(num == 2):
-	        return sensor_2
+	        return self.sensor_2
+
+    def update_waypoint(self,waypointList):
+    	self.current_WP_list = waypointList
+
+    def update_sensor_values(self,f,b):
+    	self.sensor_1 = f
+    	self.sensor_2 = b
 
 	def path_find(self):
 	    self.robot.robot_turn(pi/2);
@@ -170,6 +179,12 @@ class REDRobotControlPlan ( Plan ):
 		follow_th = .5
 
 		while(len(waypoint_list)):
+
+			#if we are not autonomous, don't run control loop
+			if not self.autonomous:
+				yield self.forDuration(1.0/20.0)
+				continue
+
 			wp_reached = 0;
 			#th = 2;
 			while(wp_reached == 0):
@@ -194,4 +209,5 @@ class REDRobotControlPlan ( Plan ):
 				w_c = w_n;
 				w_n = waypoints[0]
 				
-				self.path_transition( w_p, w_c, w_c, w_n);
+				self.path_transition( w_p, w_c, w_c, w_n)
+				yield self.forDuration(1.0/20.0)

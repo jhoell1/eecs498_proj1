@@ -19,31 +19,36 @@ from sensorPlan import sensorPlan
 
 class REDRobotApp( JoyApp):
 
-    def __init__(self,right_wheel, left_wheel,*arg,**kw):
+    def __init__(self,right_wheel, left_wheel,laserServo, tagServo,*arg,**kw):
         JoyApp.__init__( self,
         confPath="$/cfg/JoyApp.yml",
         ) 
         print "DOES ANYTHING WORK AROUND HERE"
-        self.right_wheel = right_wheel
-        self.left_wheel = left_wheel
-        self.robot = REDRobotDriver(self.right_wheel, #right wheel
-                                    self.left_wheel,  #left wheel
-                                    self.right_wheel, #laser -- placeholder
-                                    self.left_wheel,  #tag -- placeholder
-                                    0.6) #torque 
+        self.robot = REDRobotDriver(right_wheel, #right wheel
+                                    left_wheel,  #left wheel
+                                    laserServo, #laser -- placeholder
+                                    tagServo,  #tag -- placeholder
+                                    0.6) #torque
 
     def onStart(self):
         print "Initialzing the robot"
         self.sensor = SensorPlan(self)
         self.sensor.start()
+        self.controller = REDRobotControlPlan(self,self.robot)
+        self.controller.start()
         self.timeForUpdate = self.onceEvery(1/20.0)
 
     def onEvent(self, evt):
 
         if self.timeForUpdate():
+            #get the latest information from sensors and update the controller
+            #with those values
             ts,f,b = self.sensor.lastSensor
             ts2, w = self.sensor.lastWaypoint
-
+            if ts:
+                self.controller.update_waypoint(w)
+            if ts2:
+                self.controller.update_sensor_values(f,b)
 
 
         if evt.type == KEYDOWN:
@@ -59,15 +64,18 @@ class REDRobotApp( JoyApp):
             elif evt.key == K_RIGHT:
                 self.robot.unitRobotRotate(-1)
                 return progress("(say) Turn right")
+            elif evt.key == K_a:
+                self.controller.go_autonomous()
+                return progress("(say) Going Autonomous!")
             # Use superclass to show any other events
             return JoyApp.onEvent(self,evt)
 
 
 if __name__ == "__main__":
 
-    numservos = 2
+    numservos = 4
     c = L.Cluster()
-    c.populate(count =2)
+    c.populate(count = numservos)
 
     scr = None
 
