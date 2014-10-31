@@ -11,7 +11,7 @@ from joy import progress
 from pdb import set_trace as DEBUG
 
 
-class REDRobotDriver():
+class REDRobotDriver(object):
 
     def __init__(self, right_wheel, left_wheel, laser_servo, tag_servo, torque, *arg, **kw):
         print "initializing REDRobot driver"
@@ -20,7 +20,7 @@ class REDRobotDriver():
         self.laser_serv = laser_servo
         self.tag_serv = tag_servo
         self.torque = torque
-        self.time_step = 0.1
+        self.time_step = 0.2
 
 ########################################################################################
 ###                             ROBOT MICRO MOVEMENTS                                ###
