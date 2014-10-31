@@ -1,15 +1,17 @@
-from numpy import*
+from numpy import *
 # The main program is a JoyApp
 from joy import Plan, progress
-from enum import Enum
 from waypointShared import *
 
 
 turn_by = pi/45
-f_steps = 5
+f_steps = 1
 max_sens_dif = 10
 
 follow_th = 30
+
+distance_between_sensors = 1
+
 
 
 def sensorDataInit():
@@ -17,7 +19,10 @@ def sensorDataInit():
 	return data
 
 
-class controller_State(Enum):
+
+
+
+class controller_State():
 	init = 5
 	path_find_init = 1
 	path_follow = 2
@@ -32,6 +37,7 @@ class REDRobotControlPlan ( Plan ):
 	def __init__( self, app, robotDriver, *arg, **kw ):
 		Plan.__init__(self, app, *arg, **kw )
 		self.robot = robotDriver
+		self.controller_State = controller_State()
 
 		self.autonomous = False 
 		self.data = sensorDataInit()
@@ -76,12 +82,20 @@ class REDRobotControlPlan ( Plan ):
 		self.on_line = 0
 		self.tried_move = 0
 		self.ready_to_move = 1
+		self.find_dir = 0
 
 		#path follow sub_states
 		self.ready_for_forward = 1
 
 		#other states
 		self.one_wp_reached = 0
+
+	def theo_diff(self):
+		diff1 = self.lookup_Sensor_Nonlin(self.sens1 + distance_between_sensors)
+		diff2 = self.lookup_Sensor_Nonlin(self.sens1 - distance_between_sensors)
+
+		return(min(diff1, diff2)*.9)
+
 
 	def lookup_Sensor_Nonlin(self,y):
 		if(y < 0):
@@ -94,6 +108,8 @@ class REDRobotControlPlan ( Plan ):
 		steps = .05;
 		max_x = 30;
 		min_x = 0;
+		low_bdx = 0
+		up_bdx  = 0
 
 		for i in range(0,int(max_x/steps)):
 			if(y > self.data[i]):
@@ -101,16 +117,16 @@ class REDRobotControlPlan ( Plan ):
 				low_bdx = i-1;
 				break
 
-		low_y = self.data[low_bd]
-		up_y = self.data[up_bd]
+		low_y = self.data[low_bdx]
+		up_y = self.data[up_bdx]
 
 		if(low_y == y):
-			return low_bd
+			return low_bdx
 		if(up_y == y):
-			return up_bd;
+			return up_bdx;
 
-		m = (up_y-low_y)/(up_bd*steps-low_bd*steps);
-		b = up_y-m*up_bd*steps;
+		m = (up_y-low_y)/(up_bdx*steps-low_bdx*steps);
+		b = up_y-m*up_bdx*steps;
 
 		return (y-b)/m
 
@@ -134,30 +150,31 @@ class REDRobotControlPlan ( Plan ):
 	def get_WP(self):
 		return self.current_WP_list
 
-    def controller_waitForWaypoints(self):
-    	print "=========Attempting Waypoint initialization==========="
-        if current_WP_list is None :
-            self.state = controller_State.path_find_init
-            print "===============intialization complete================="
-        else
-        	self.state = controller_State.init
-        	self.prev_WP_list = self.current_WP_list
+	def controller_waitForWaypoints(self):
+		print "=========Attempting Waypoint initialization==========="
+		if self.current_WP_list is not None :
+			self.state = controller_State.path_find_init
+			self.prev_WP_list = self.current_WP_list
+			print "===============intialization complete================="
+		else:
+			self.state = controller_State.init
 
 
-    def controller_updateSensorData(self):
-    	if(self.cur_read < self.num_reads and not self.valid_s_reads):
-				print "sensor read"
-				temp_s1 = self.getSensorVal(1)
-				temp_s2 = self.getSensorVal(2)
-				self.sens1 = (self.sens1 * self.cur_read + temp_s1)/(self.cur_read + 1.0)
-				self.sens2 = (self.sens2 * self.cur_read + temp_s2)/(self.cur_read + 1.0)
-				self.cur_read = self.cur_read + 1			
-				self.valid_s_reads = 0
+	def controller_updateSensorData(self):
+		if(self.cur_read < self.num_reads and not self.valid_s_reads):
+			#print "sensor read"
+			temp_s1 = self.getSensorVal(1)
+			temp_s2 = self.getSensorVal(2)
+			self.sens1 = (self.sens1 * self.cur_read + temp_s1)/(self.cur_read + 1.0)
+			self.sens2 = (self.sens2 * self.cur_read + temp_s2)/(self.cur_read + 1.0)
+			self.cur_read = self.cur_read + 1
+			return 0
 
 		elif(self.cur_read == self.num_reads):
 			print " found 10 sensor reads"
 			self.valid_s_reads = 1
 			self.cur_read = 0
+			return 1
 
 	def controller_pathFindInit(self):
 		if(self.valid_s_reads and not self.got_init_diff):
@@ -172,16 +189,19 @@ class REDRobotControlPlan ( Plan ):
 
 			self.robot.tagRotate(self.direction * turn_by)
 			self.angle = self.angle + turn_by*self.direction
-			self.valid_s_reads = 0
+			#self.valid_s_reads = 0
 			self.got_init_diff = 1
 
-		elif(self.valid_s_reads and self.got_init_diff):
+			self.find_dir = 1
+
+		elif(self.valid_s_reads and self.got_init_diff and self.find_dir):
 			print "figure out which direction to turn in"
 			temp_d = self.sens1 - self.sens2
 			if(abs(temp_d) < self.diff):
 				self.direction = self.direction * -1
 			self.begin_search = 1
 			self.diff = temp_d
+			self.find_dir = 0
 
 		elif(self.begin_search):
 			print " looking for dat max"
@@ -189,23 +209,32 @@ class REDRobotControlPlan ( Plan ):
 			self.angle = self.angle + turn_by*self.direction
 			if(self.valid_s_reads):
 				temp_d = self.sens1 - self.sens2
+				print "new difference:"
+				print temp_d
+				print "old difference"
+				print self.diff
+
 
 				# we are done here.. we have found the max in the previous step
-				if(abs(temp_d) < self.diff):
+				print "max diff should be at least:"
+				print self.theo_diff()
+				if(abs(temp_d) < abs(self.diff) and abs(self.diff) > self.theo_diff()):
 					self.begin_search = 0
 					self.found_max = 1
+
 
 				self.diff = temp_d
 				self.valid_s_reads = 0
 
 		elif(self.found_max):
-			print " found dat max"
+			print " =============found dat max================"
 			#turn the robot by the angle to get it aligned with the tag
-			self.robot.robotTurn(self.angle)
+			self.robot.robotTurn(self.robot.heading - self.robot.tagAngle)
 			self.try_move_to_line = 1
 			self.found_max = 0
 
 		elif(self.try_move_to_line):
+			print "=======moving_TO_LINE============="
 			self.sens1_prev = self.sens1
 			if(not self.tried_move):
 				self.robot.robotMove(f_steps, self.f_dir)
@@ -218,9 +247,10 @@ class REDRobotControlPlan ( Plan ):
 				self.found_dir_to_line = 1
 				self.try_move_to_line = 0
 
-		elif(self.found_dir_to line):
+		elif(self.found_dir_to_line):
 			#here we move until sensor read the same value---ish
-			if(self.ready_to_move)
+
+			if(self.ready_to_move):
 				self.robot.robotMove(f_steps, self.f_dir)
 				self.valid_s_reads = 0
 				self.ready_to_move = 0
@@ -234,13 +264,13 @@ class REDRobotControlPlan ( Plan ):
 		elif(self.on_line):
 			#errmm need to figure out which direction to turn perpendicular in...
 			#now we need to turn the robot perpendicular to tag.. it should be parallel at this point...
-			self.robot.robotTurn(pi/2*self)
+			self.robot.robotTurn(pi/2*self.direction)
 			self.state = controller_State.path_follow
 			self.valid_s_reads = 0
 
 	def controller_pathFollow(self):
 		if(self.ready_for_forward):
-			self.robot.robotMove(step_length, 1)
+			self.robot.robotMove(f_steps, 1)
 			self.valid_s_reads = 0
 			self.ready_for_forward = 0
 		elif(self.valid_s_reads):
@@ -253,6 +283,7 @@ class REDRobotControlPlan ( Plan ):
 				self.keep_looking = 1
 
 			self.ready_for_forward = 1
+
 	def controller_pathFind(self):
 		#go here if we are too far off the path
 		drift_calib_f_step = 2
@@ -264,10 +295,10 @@ class REDRobotControlPlan ( Plan ):
 			self.ready_for_forward = 0
 
 		elif(self.valid_s_reads):
-			self.drift_guess1 = asin((self.sens1_prev - self.sens1)/drift_calib_f_step)
-			self.drift_guess2 = asin((-1*self.sens2_prev + self.sens2)/drift_calib_f_step)
+			self.drift_guess1 = numpy.asin((self.sens1_prev - self.sens1)/drift_calib_f_step)
+			self.drift_guess2 = numpy.asin((-1*self.sens2_prev + self.sens2)/drift_calib_f_step)
 			if(self.sens2_prev > self.sens2):
-			self.drift_dir = -1
+				self.drift_dir = -1
 			else:
 				self.drift_dir = 1	
 				self.robot.robotTurn(self.drift_dir*(self.drift_guess1+self.drift_guess2)/2)
@@ -311,29 +342,38 @@ class REDRobotControlPlan ( Plan ):
 			self.turn_transition = 0
 			self.state = controller_State.path_find
 
-    def behavior(self):
+	def behavior(self):
 		while True:
 
 			if(self.initialized):
 				#this is going to be something to try tp keep track of direction we are heading in, and direciton we need to be heading in...
+				temp = True
 				if(self.one_wp_reached):
+					temp = True
 					#set self.dir_to_wp to difference in x values between previous wp and next wp...
 
 			if(self.autonomous == False):
 				yield self.forDuration(1.0/20.0)
 				continue
 
-			self.controller_updateSensorData()
+			if self.controller_updateSensorData() is 0:
+				yield self.forDuration(1/20.0)
+				continue
 
 			if(self.state == controller_State.init):
+				print "wait for waypoints"
 				self.controller_waitForWaypoints()
 			elif(self.state == controller_State.path_find_init):
+				print "entering path find init"
 				self.controller_pathFindInit()
 			elif(self.state == controller_State.path_follow):
+				print "entering path follow"
 				self.controller_pathFollow()
 			elif(self.state == controller_State.path_find):
+				print "entering path find"
 				self.controller_pathFind()
 			elif(self.state == controller_State.path_transition):
+				print "entering path transition"
 				self.controller_pathTransition()
 				
 		yield self.forDuration(1.0/20.0)

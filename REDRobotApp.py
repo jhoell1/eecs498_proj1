@@ -75,11 +75,11 @@ class REDRobotApp( JoyApp):
 
 if __name__ == "__main__":
 
-    numservos = 2
-    c = L.Cluster()
-    c.populate(count = numservos)
+    #numservos = 2
+    #c = L.Cluster()
+    #c.populate(count = numservos)
 
-    scr = None
+    #scr = None
 
     app = REDRobotApp(c.at.Nx02,c.at.Nx18,c.at.Nx02,c.at.Nx18)
     app.run()
