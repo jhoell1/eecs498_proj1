@@ -42,20 +42,20 @@ class REDRobotApp( JoyApp):
         #                            tagServo,  #tag -- placeholder
         #                            0.6) #torque
         self.bot = REDRobotDriver(app,self.rw,self.lw,self.lzr,self.tag,0.3)
-       #self.controller = REDRobotControlPlan(self,self.bot)
+        self.controller = REDRobotControlPlan(self,self.bot)
         self.bot.start()
 
     def onEvent(self, evt):
 
-        #if self.timeForUpdate():
+        if self.timeForUpdate():
             #get the latest information from sensors and update the controller
             #with those values
-            #ts,f,b = self.sensor.lastSensor
-           #ts2, w = self.sensor.lastWaypoint
-            #if ts:
-            #    self.controller.update_waypoint(w)
-            #if ts2:
-            #    self.controller.update_sensor_values(f,b)
+            ts,f,b = self.sensor.lastSensor
+            ts2, w = self.sensor.lastWaypoints
+            if ts:
+                self.controller.update_waypoint(w)
+            if ts2:
+                self.controller.update_sensor_values(f,b)
 
 
         if evt.type == KEYDOWN:
