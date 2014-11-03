@@ -207,18 +207,25 @@ class REDRobotDriver( Plan ):
         wheel_step_guess = 8.0
 
         turret_torque = 0.3
-        turret_time = 0.15*7.0/13.0
+        turret_time = 0.1
         turret_step_guess = 17.3
 
         self.laserRotateRequest = False
         self.laserAngleRequest = 0.0
         self.laserResolution = 0.0
+
         self.tagRotateRequest = False
         self.tagAngleRequest = 0.0
         self.tagResolution = 0.0
 
+        self.robotRotateRequest = False
+        self.robotAngleRequest = 0.0
+        self.dTheta = 0.0
+        self.rotateBack = 0.0
+
 
         #orientation stuffs
+        self.turnRequested = False
         self.orientation = 0.0
         self.orientationKnown = False
         self.oldWhR = None
@@ -244,12 +251,7 @@ class REDRobotDriver( Plan ):
         self.rw.calibrateAngleGuess(10)
         self.lw.calibrateAngleGuess(10)
         self.laser_serv.calibrateAngleGuess(10)
-        self.tag_serv.calibrateAngleGuess(10)
-
-        # query servos for their resolution
-        self.laserResolution = self.laser_serv.getResolution()
-        self.tagResolution = self.tag_serv.getResolution()
-        
+        self.tag_serv.calibrateAngleGuess(10)        
 
 ########################################################################################
 ###                             ROBOT MICRO MOVEMENTS                                ###
@@ -265,38 +267,57 @@ class REDRobotDriver( Plan ):
                 if self.oldWhR is None and self.oldWhL is None:
                     self.oldWhR = self.rw.angle
                     self.oldWhL = self.lw.angle
-                else :
+                elif self.turnRequested is True: # only update angle if we are turning
                     diffR = (self.lw.angle - self.oldWhL)
                     diffL = (self.rw.angle - self.oldWhR)
                     distR = diffR*0.07 # wheel radius
                     distL = diffL*0.07 # wheel radius
-                    dTheta = (distR-distL)/0.26 # baseline
-                    dTheta *= self.k #k is calibration factor
-                    print "diffR: " + str(diffR) + " diffL: " + str(diffL) + " distR: " + str(distR) + " distL: " + str(distL) + " dTheta: " + str(dTheta)
-                    self.orientation += dTheta
+                    self.dTheta = (distR+distL)/0.26 # baseline #have no clue why +.....should be negative :/
+                    self.dTheta *= self.k #k is calibration factor
+                    if self.dTheta != 0.0:
+                        print "diffR: " + str(diffR) + " diffL: " + str(diffL) + " distR: " + str(distR) + " distL: " + str(distL) + " dTheta: " + str(self.dTheta)
+                    self.orientation += self.dTheta
                     self.orientationKnown = True
+
+                    while (self.orientation > pi):
+                        self.orientation -= 2*pi
+                    while (self.orientation < -pi):
+                        self.orientation += 2*pi
+
                     i += 1
                     self.oldWhR = self.rw.angle
                     self.oldWhL = self.lw.angle
+                    self.turnRequested = False
 
-            #handle tag angle rotation
+            #handle laser angle rotation
             if self.laserRotateRequest is True:
+                self.laserResolution = self.laser_serv.getResolution()
                 if abs(self.laser_serv.angle - self.laserAngleRequest) > self.laserResolution:
                     self.unitLaserRotate(sign(self.laser_serv.angle - self.laserAngleRequest))
                 else:
                     self.laserRotateRequest = False
                     print "Finished laser rotation!"
 
+            #handle tag angle rotation
             if self.tagRotateRequest is True:
-                print "inside tag rotate"
-                print "tag angle " + str(self.tag_serv.angle)
-                print "tag request: " + str(self.tagAngleRequest)
+                #print "inside tag rotate"
+                self.tagResolution = self.tag_serv.getResolution()
+                #print "tag angle " + str(self.tag_serv.angle)
+                #print "tag request: " + str(self.tagAngleRequest)
+                #print "tag resolution: " + str(self.tagResolution)
                 if abs(self.tag_serv.angle - self.tagAngleRequest) > self.tagResolution:
-                    self.unitTagRotate(sign(self.tag_serv.angle - self.tagAngleRequest))
+                    self.unitTagRotate(sign(self.tagAngleRequest - self.tag_serv.angle))
                 else:
                     self.tagRotateRequest = False
                     print "Finished tag rotation!"
 
+            if self.robotRotateRequest is True:
+                if abs(self.orientation - self.robotAngleRequest) > self.dTheta:
+                    self.unitRobotRotate(sign(self.robotAngleRequest - self.orientation))
+                else:
+                    self.robotRotateRequest = False
+                    self.tagRotate(self.rotateBack) #-original angle
+                    print "Finished robot rotation"
 
             yield self.forDuration(1.0/20.0)
 
@@ -311,8 +332,6 @@ class REDRobotDriver( Plan ):
 
         #self.wheels.moveForward(direct)
         
-
-
         # pos_before_r = self.right_wheel.get_pos()
         # pos_before_l = self.left_wheel.get_pos()
         # self.right_wheel.set_torque(self.torque*direct)
@@ -333,9 +352,9 @@ class REDRobotDriver( Plan ):
         assert(direct == 1 or direct == -1)
 
 
-
-        self.rw.turnSingle(direct)
-        self.lw.turnSingle(direct)
+        self.turnRequested = True
+        self.rw.turnSingle(-1*direct)
+        self.lw.turnSingle(-1*direct)
         #self.wheels.turnSingle(direct)
 
 
@@ -383,25 +402,36 @@ class REDRobotDriver( Plan ):
 
     def robotTurn(self, angle):
 
-        while (angle > pi):
-            angle -= 2*pi;
-        while (angle < -pi):
-            angle += 2*pi;
+        self.robotRotateRequest = True
 
-        direct = sign(angle)
-        finalHeading = self.orientation + angle
-        while(abs(self.heading-finalHeading) > self.dtheta):
-            self.unitRobotRotate(direct)
-        self.tagRotate(-angle) #rotate tag back after finishing rotation
+        self.robotAngleRequest = self.orientation + angle
+
+        while (self.robotAngleRequest > pi):
+            self.robotAngleRequest -= 2*pi
+        while (self.robotAngleRequest < -pi):
+            self.robotAngleRequest += 2*pi
+
+        self.rotateBack = -1*angle
+
+        # while (angle > pi):
+        #     angle -= 2*pi;
+        # while (angle < -pi):
+        #     angle += 2*pi;
+
+        # direct = sign(angle)
+        # finalHeading = self.orientation + angle
+        # while(abs(self.heading-finalHeading) > self.dtheta):
+        #     self.unitRobotRotate(direct)
+        #self.tagRotate(-angle) #rotate tag back after finishing rotation
 
     def laserRotate(self,angle):
         self.laserRotateRequest = True
 
         self.laserAngleRequest = self.laser_serv.angle + angle
         while (self.laserAngleRequest > pi):
-            self.laserAngleRequest -= 2*pi;
+            self.laserAngleRequest -= 2*pi
         while (self.laserAngleRequest < -pi):
-            self.laserAngleRequest += 2*pi;
+            self.laserAngleRequest += 2*pi
 
         # direct = sign(angle)
         # finalLaser = self.laserHeading + angle
@@ -412,13 +442,11 @@ class REDRobotDriver( Plan ):
 
         self.tagRotateRequest = True
 
-        angle = -1*angle
-
         self.tagAngleRequest = self.tag_serv.angle + angle
         while (self.tagAngleRequest > pi):
-            self.tagAngleRequest -= 2*pi;
+            self.tagAngleRequest -= 2*pi
         while (self.tagAngleRequest < -pi):
-            self.tagAngleRequest += 2*pi;
+            self.tagAngleRequest += 2*pi
 
         # while (angle > pi):
         #     angle -= 2*pi;

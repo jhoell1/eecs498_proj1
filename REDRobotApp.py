@@ -61,25 +61,25 @@ class REDRobotApp( JoyApp):
 
         if evt.type == KEYDOWN:
             if evt.key == K_UP:
-                self.bot.unitRobotMove(1)
+                self.bot.robotMove(5,1)
                 return progress("(say) Move forward")
             elif evt.key == K_DOWN:
-                self.bot.unitRobotMove(-1)
+                self.bot.robotMove(5,-1)
                 return progress("(say) Move back")
             elif evt.key == K_LEFT:
-                self.bot.unitRobotRotate(1)
-                self.bot.unitLaserRotate(1)
+                self.bot.robotTurn(-pi/2)
                 return progress("(say) Turn left")
             elif evt.key == K_RIGHT:
-                self.bot.unitRobotRotate(-1)
-                self.bot.unitLaserRotate(-1)
+                self.bot.robotTurn(pi/2)
+                #self.bot.unitRobotRotate(-1)
+                #self.bot.unitLaserRotate(-1)
                 return progress("(say) Turn right")
             elif evt.key == K_q:
                 #self.bot.unitTagRotate(1)
                 self.bot.tagRotate(pi/2.0)
                 return progress("(say) Turning tag")
             elif evt.key == K_w:
-                self.bot.unitLaserRotate(1)
+                self.bot.laserRotate(pi/2.0)
                 return progress("(say) Turning laser")
             elif evt.key == K_a:
                 self.controller.go_autonomous()
