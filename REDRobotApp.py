@@ -6,7 +6,7 @@ from REDRobotDriver import REDRobotDriver
 
 from gzip import open as opengz
 from json import dumps as json_dumps
-from numpy import cos,sin,asfarray, dot, c_, newaxis, mean, exp, sum, sqrt, sign
+from numpy import cos,sin,asfarray, dot, c_, newaxis, mean, exp, sum, sqrt, sign, pi
 from numpy.linalg import svd
 from numpy.random import randn
 from scipy import pi
@@ -26,11 +26,10 @@ class REDRobotApp( JoyApp):
         confPath="$/cfg/JoyApp.yml",
         ) 
         print "DOES ANYTHING WORK AROUND HERE"
-        self.bot = REDRobotDriver(right_wheel, #right wheel
-                                    left_wheel,  #left wheel
-                                    laserServo, #laser -- placeholder
-                                    tagServo,  #tag -- placeholder
-                                    0.6) #torque
+        self.rw = right_wheel
+        self.lw = left_wheel
+        self.lzr = laserServo
+        self.tag = tagServo
 
     def onStart(self):
         print "Initialzing the robot"
@@ -39,6 +38,13 @@ class REDRobotApp( JoyApp):
        #self.controller = REDRobotControlPlan(self,self.bot)
         #self.controller.start()
         #self.timeForUpdate = self.onceEvery(1/20.0)
+        #self.bot = REDRobotDriver(right_wheel, #right wheel
+        #                            left_wheel,  #left wheel
+        #                            laserServo, #laser -- placeholder
+        #                            tagServo,  #tag -- placeholder
+        #                            0.6) #torque
+        self.bot = REDRobotDriver(app,self.rw,self.lw,self.lzr,self.tag,0.3)
+        self.bot.start()
 
     def onEvent(self, evt):
 
@@ -62,10 +68,19 @@ class REDRobotApp( JoyApp):
                 return progress("(say) Move back")
             elif evt.key == K_LEFT:
                 self.bot.unitRobotRotate(1)
+                self.bot.unitLaserRotate(1)
                 return progress("(say) Turn left")
             elif evt.key == K_RIGHT:
                 self.bot.unitRobotRotate(-1)
+                self.bot.unitLaserRotate(-1)
                 return progress("(say) Turn right")
+            elif evt.key == K_q:
+                #self.bot.unitTagRotate(1)
+                self.bot.tagRotate(pi/2.0)
+                return progress("(say) Turning tag")
+            elif evt.key == K_w:
+                self.bot.unitLaserRotate(1)
+                return progress("(say) Turning laser")
             elif evt.key == K_a:
                 self.controller.go_autonomous()
                 return progress("(say) Going Autonomous!")
@@ -80,6 +95,12 @@ if __name__ == "__main__":
     c.populate(count = numservos)
 
     #scr = None
+    robot = dict(count=numservos)
+    scr = {}
 
-    app = REDRobotApp(c.at.Nx02,c.at.Nx18,c.at.Nx12,c.at.Nx15)
+    #02 is right wheel
+    #18 is left wheel
+    #15 is laser
+    #12 is tag
+    app = REDRobotApp(c.at.Nx18,c.at.Nx02,c.at.Nx15,c.at.Nx12, robot = robot,scr = scr)
     app.run()
