@@ -60,10 +60,10 @@ class REDRobotApp( JoyApp):
 
         if evt.type == KEYDOWN:
             if evt.key == K_UP:
-                self.bot.robotMove(5,1)
+                self.bot.robotMove(10,1)
                 return progress("(say) Move forward")
             elif evt.key == K_DOWN:
-                self.bot.robotMove(5,-1)
+                self.bot.robotMove(10,-1)
                 return progress("(say) Move back")
             elif evt.key == K_LEFT:
                 #self.bot.robotTurn(-pi/2)

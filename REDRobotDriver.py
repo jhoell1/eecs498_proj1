@@ -180,11 +180,11 @@ class servoPlan( Plan ):
                     if abs(abs(diff) - self.asg) > 0.05: #usually means that the step was into the deadzone, inside the deadzone or out of the deadzone
                         self.angle += self.dir*self.asg #increase angle by step guess (which was tuned previously)
                     else:
-                        self.angle = pos_after
+                        self.angle += self.dir*self.asg #pos_after
                     #correct angle to be between -pi and pi
                 else:
                     if abs(abs(diff) - self.asg) < 0.05: #ideally means that both side of the step was not in the deadzone
-                        self.angle = pos_after
+                        self.angle += self.dir*self.asg#pos_after
                         self.angleKnown = True
                     else:
                         print "cannot determine absolute angle yet unfortunately. Will wait for next step"
@@ -206,8 +206,8 @@ class REDRobotDriver( Plan ):
         self.wheel_time = 0.2
         self.wheel_step_guess = 8.0
 
-        self.turret_torque = 0.2
-        self.turret_time = 0.1
+        self.turret_torque = 0.19
+        self.turret_time = 0.125
         self.turret_step_guess = 17.3
 
         self.laserRotateRequest = False
