@@ -27,9 +27,9 @@ class REDRobotSimulatorApp( JoyApp ):
     self.sensor = SensorPlan(self)
     self.sensor.start()
     self.robSim = REDRobotSim(fn=None)
-    self.timeForStatus = self.onceEvery(1/10)
+    self.timeForStatus = self.onceEvery(1)
     self.timeForLaser = self.onceEvery(1/15.0)
-    self.timeForFrame = self.onceEvery(1/20.0)
+    self.timeForFrame = self.onceEvery(1)
 
 
     self.controller = REDRobotControlPlan(self, self.robSim)
@@ -64,8 +64,8 @@ class REDRobotSimulatorApp( JoyApp ):
     
   def onEvent( self, evt ):
     # periodically, show the sensor reading we got from the waypointServer
-    #if self.timeForStatus(): 
-      #self.showSensors()
+    if self.timeForStatus(): 
+      self.showSensors()
     # generate simulated laser readings
     #if self.timeForLaser():
       #progress( self.robSim.logLaserValue(self.now) )
@@ -94,28 +94,28 @@ class REDRobotSimulatorApp( JoyApp ):
 
 
       if evt.key == K_UP:
-        self.robSim.robotMove(10,1)
+        self.robSim.robotMove(1,1)
         return progress("(say) Move forward")
       elif evt.key == K_DOWN:
-        self.robSim.robotMove(10,-1)
+        self.robSim.robotMove(1,-1)
         return progress("(say) Move back")
       elif evt.key == K_LEFT:
-        self.robSim.robotTurn(pi/8.0)
+        self.robSim.robotTurn(pi/16.0)
         return progress("(say) Turn left")
       elif evt.key == K_RIGHT:
-        self.robSim.robotTurn(-pi/8.0)
+        self.robSim.robotTurn(-pi/16.0)
         return progress("(say) Turn right")
       elif evt.key == K_a:
-        self.robSim.laserRotate(pi/8.0)
+        self.robSim.laserRotate(pi/16.0)
         return progress("(say) Rotate Laser left")
       elif evt.key == K_s:
-        self.robSim.laserRotate(-pi/8.0)
+        self.robSim.laserRotate(-pi/16.0)
         return progress("(say) Rotate Laser right")
       elif evt.key == K_q:
-        self.robSim.tagRotate(pi/8.0)
+        self.robSim.tagRotate(pi/16.0)
         return progress("(say) Rotate tag left")
       elif evt.key == K_w:
-        self.robSim.tagRotate(-pi/8.0)
+        self.robSim.tagRotate(-pi/16.0)
         return progress("(say) Rotate tag right")
 
       elif evt.key == K_x:

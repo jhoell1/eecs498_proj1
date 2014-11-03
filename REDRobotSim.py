@@ -55,7 +55,7 @@ class REDRobotSim( RobotSimInterface ):
 
         while(abs(self.heading-finalHeading) > self.dtheta):
             self.unitRobotRotate(direct)
-        self.tagRotate(-angle) #rotate tag back after finishing rotation
+        self.tagRotate(-1*angle) #rotate tag back after finishing rotation
 
     def laserRotate(self,angle):
         while (angle > pi):
@@ -201,23 +201,6 @@ class REDRobotSim( RobotSimInterface ):
         #print("LASERAXIS:")
         #print(self.laserAxis)
 
-        self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
-        da = dot([1,-1],self.laserAxis)
-        self.laserAxis[1] += randn(2) * sqrt(sum(da*da)) * 0.01
-        zx = dot(self.laserAxis,[1,1j])*exp(1j * ((self.laserHeading-self.tagAngle)+randn()*self.aNoise))
-        self.laserAxis[:,0] = zx.real
-        self.laserAxis[:,1] = zx.imag
-
-        z = dot(self.tagPos,[1,1j])
-        c = mean(z)
-        zr = c + (z-c) * exp(1j * ((self.tagAngle-self.oldTag)+randn()*self.aNoise)) # think more about this noise -- maybe gaussian?
-
-        self.tagPos[:,0] = zr.real
-        self.tagPos[:,1] = zr.imag
-
-
-        self.oldTag = self.tagAngle
-
 
         while(self.tagAngle > pi):
             self.tagAngle = self.tagAngle - 2*pi
@@ -234,15 +217,34 @@ class REDRobotSim( RobotSimInterface ):
         while(self.laserHeading > pi):
             self.laserHeading = self.laserHeading - 2*pi
         while(self.laserHeading < -pi):
-            self.laserHeading = self.laserHeading + 2*pi    
+            self.laserHeading = self.laserHeading + 2*pi 
+
+        self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
+        da = dot([1,-1],self.laserAxis)
+        self.laserAxis[1] += randn(2) * sqrt(sum(da*da)) * 0.01
+        zx = dot(self.laserAxis,[1,1j])*exp(1j * ((self.laserHeading-self.tagAngle)+randn()*self.aNoise))
+        self.laserAxis[:,0] = zx.real
+        self.laserAxis[:,1] = zx.imag
+
+        z = dot(self.tagPos,[1,1j])
+        c = mean(z)
+        zr = c + (z-c) * exp(1j * ((self.tagAngle-self.oldTag))) #+randn()*self.aNoise)) # think more about this noise -- maybe gaussian?
+
+        self.tagPos[:,0] = zr.real
+        self.tagPos[:,1] = zr.imag
+
+
+        self.oldTag = self.tagAngle
+
+   
         #output current state:
         #os.system('cls' if os.name == 'nt' else 'clear')
        
 
-       # print "Current State: "
-       # print "heading" + repr(self.heading)
-       # print "tag Angle: " + repr(self.tagAngle)
-       # print "Laser Angle" + repr(self.laserHeading)
+        print "Current State: "
+        print "heading" + repr(self.heading)
+        print "tag Angle: " + repr(self.tagAngle)
+        print "Laser Angle" + repr(self.laserHeading)
 
         #self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
         #da = dot([1,-1],self.laserAxis)

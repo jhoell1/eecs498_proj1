@@ -6,7 +6,7 @@ from waypointShared import *
 
 turn_by = pi/45
 f_steps = 1
-max_sens_dif = 10
+max_sens_dif = 70
 
 follow_th = 30
 
@@ -44,6 +44,11 @@ class REDRobotControlPlan ( Plan ):
 		self.current_WP_list = None
 		self.prev_WP_list = None
 
+
+		self.robot_heading = 0
+		self.tag_angle = 0
+
+
 		self.sens2_prev = 0
 		self.drift_guess1 = 0
 		self.drift_guess2 = 0
@@ -65,7 +70,7 @@ class REDRobotControlPlan ( Plan ):
 		self.cur_read = 0
 		self.sens1 = 0
 		self.sens2 = 0
-		self.num_reads = 10
+		self.num_reads = 40
 		self.valid_s_reads = 0
 
 		#INIT PATH SUB-STATES
@@ -83,7 +88,16 @@ class REDRobotControlPlan ( Plan ):
 		self.tried_move = 0
 		self.ready_to_move = 1
 		self.find_dir = 0
+		self.turnt = 0
+		self.dir_fixed = 0
 
+
+
+		self.general_x_direction = 0
+
+
+		self.only_one_reading = 0
+		self.max_one_val = 0
 		#path follow sub_states
 		self.ready_for_forward = 1
 
@@ -91,10 +105,10 @@ class REDRobotControlPlan ( Plan ):
 		self.one_wp_reached = 0
 
 	def theo_diff(self):
-		diff1 = self.lookup_Sensor_Nonlin(self.sens1 + distance_between_sensors)
-		diff2 = self.lookup_Sensor_Nonlin(self.sens1 - distance_between_sensors)
+		diff1 = self.lookup_Sensor_Nonlin(self.sens1) - self.lookup_Sensor_Nonlin(self.sens1 + distance_between_sensors)
+		diff2 = self.lookup_Sensor_Nonlin(self.sens1) - self.lookup_Sensor_Nonlin(self.sens1 - distance_between_sensors)
 
-		return(min(diff1, diff2)*.9)
+		return(min(abs(diff1), abs(diff2))*.9)
 
 
 	def lookup_Sensor_Nonlin(self,y):
@@ -153,14 +167,20 @@ class REDRobotControlPlan ( Plan ):
 	def controller_waitForWaypoints(self):
 		print "=========Attempting Waypoint initialization==========="
 		if self.current_WP_list is not None :
-			self.state = controller_State.path_find_init
+			self.state = controller_State.path_follow
 			self.prev_WP_list = self.current_WP_list
+			self.general_x_direction = sign(self.current_WP_list[1][0] - self.current_WP_list[0][0])
 			print "===============intialization complete================="
 		else:
 			self.state = controller_State.init
 
 
+
 	def controller_updateSensorData(self):
+		if(self.cur_read == 0):
+			self.sens1_prev = self.sens1
+			self.sens2_prev = self.sens2
+
 		if(self.cur_read < self.num_reads and not self.valid_s_reads):
 			#print "sensor read"
 			temp_s1 = self.getSensorVal(1)
@@ -170,103 +190,14 @@ class REDRobotControlPlan ( Plan ):
 			self.cur_read = self.cur_read + 1
 			return 0
 
+
 		elif(self.cur_read == self.num_reads):
-			print " found 10 sensor reads"
 			self.valid_s_reads = 1
 			self.cur_read = 0
-			return 1
-
-	def controller_pathFindInit(self):
-		if(self.valid_s_reads and not self.got_init_diff):
-			print "finding baseline difference"
-			self.diff = self.sens1 - self.sens2
-			if(self.diff > 0):
-				self.direction = 1
-			elif(self.diff < 0):
-				self.direction = -1
+			if(self.sens1 <4 or self.sens2 <4):
+				return -1
 			else:
-				state = controller_State.error_state
-
-			self.robot.tagRotate(self.direction * turn_by)
-			self.angle = self.angle + turn_by*self.direction
-			#self.valid_s_reads = 0
-			self.got_init_diff = 1
-
-			self.find_dir = 1
-
-		elif(self.valid_s_reads and self.got_init_diff and self.find_dir):
-			print "figure out which direction to turn in"
-			temp_d = self.sens1 - self.sens2
-			if(abs(temp_d) < self.diff):
-				self.direction = self.direction * -1
-			self.begin_search = 1
-			self.diff = temp_d
-			self.find_dir = 0
-
-		elif(self.begin_search):
-			print " looking for dat max"
-			self.robot.tagRotate(self.direction * turn_by)
-			self.angle = self.angle + turn_by*self.direction
-			if(self.valid_s_reads):
-				temp_d = self.sens1 - self.sens2
-				print "new difference:"
-				print temp_d
-				print "old difference"
-				print self.diff
-
-
-				# we are done here.. we have found the max in the previous step
-				print "max diff should be at least:"
-				print self.theo_diff()
-				if(abs(temp_d) < abs(self.diff) and abs(self.diff) > self.theo_diff()):
-					self.begin_search = 0
-					self.found_max = 1
-
-
-				self.diff = temp_d
-				self.valid_s_reads = 0
-
-		elif(self.found_max):
-			print " =============found dat max================"
-			#turn the robot by the angle to get it aligned with the tag
-			self.robot.robotTurn(self.robot.heading - self.robot.tagAngle)
-			self.try_move_to_line = 1
-			self.found_max = 0
-
-		elif(self.try_move_to_line):
-			print "=======moving_TO_LINE============="
-			self.sens1_prev = self.sens1
-			if(not self.tried_move):
-				self.robot.robotMove(f_steps, self.f_dir)
-				self.tried_move = 1
-				self.valid_s_reads = 0
-			if(self.valid_s_reads):
-				#if sensor readings are getting smaller, then we are going wrong way
-				if(self.sens1 < self.sens1_prev):
-					self.f_dir = self.f_dir * -1
-				self.found_dir_to_line = 1
-				self.try_move_to_line = 0
-
-		elif(self.found_dir_to_line):
-			#here we move until sensor read the same value---ish
-
-			if(self.ready_to_move):
-				self.robot.robotMove(f_steps, self.f_dir)
-				self.valid_s_reads = 0
-				self.ready_to_move = 0
-
-			elif(self.valid_s_reads):
-				if(abs(self.sens1 - self.sens2) < max_sens_dif):
-					self.on_line = 1
-					self.found_dir_to_line = 0
-				self.ready_to_move = 1
-
-		elif(self.on_line):
-			#errmm need to figure out which direction to turn perpendicular in...
-			#now we need to turn the robot perpendicular to tag.. it should be parallel at this point...
-			self.robot.robotTurn(pi/2*self.direction)
-			self.state = controller_State.path_follow
-			self.valid_s_reads = 0
+				return 1
 
 	def controller_pathFollow(self):
 		if(self.ready_for_forward):
@@ -274,7 +205,7 @@ class REDRobotControlPlan ( Plan ):
 			self.valid_s_reads = 0
 			self.ready_for_forward = 0
 		elif(self.valid_s_reads):
-			if(abs(self.sens1 - self.sens2) > follow_th):
+			if(abs(self.sens1 - self.sens2) > max_sens_dif):
 				#too far off path
 				self.state = controller_State.path_find
 
@@ -293,29 +224,92 @@ class REDRobotControlPlan ( Plan ):
 			self.robot.robotMove(drift_calib_f_step, 1)
 			self.valid_s_reads = 0
 			self.ready_for_forward = 0
+			self.turnt = 0
+			self.dir_fixed = 1
 
 		elif(self.valid_s_reads):
-			self.drift_guess1 = numpy.asin((self.sens1_prev - self.sens1)/drift_calib_f_step)
-			self.drift_guess2 = numpy.asin((-1*self.sens2_prev + self.sens2)/drift_calib_f_step)
+
+
+			'''print self.sens1_prev
+			print self.sens1
+			print self.sens2_prev
+			print self.sens2
+			print "=-=-=-=-=-==============="
+			print self.lookup_Sensor_Nonlin(self.sens1_prev)
+			print self.lookup_Sensor_Nonlin(self.sens1)
+			print self.lookup_Sensor_Nonlin(self.sens2_prev)
+			print self.lookup_Sensor_Nonlin(self.sens2)
+
+			rev_s1_p = self.lookup_Sensor_Nonlin(self.sens1_prev)
+			rev_s1 = self.lookup_Sensor_Nonlin(self.sens1)
+
+			rev_s2_p = self.lookup_Sensor_Nonlin(self.sens2_prev)
+			rev_s2 = self.lookup_Sensor_Nonlin(self.sens2)
+
+			forward_step_length = .15
+
+			print "trying to do arc sin of"
+			print ((rev_s1 - rev_s1_p)/forward_step_length)
+			print ((-1*rev_s2 + rev_s2_p)/forward_step_length)
+
+			self.drift_guess1 = arcsin((rev_s1 - rev_s1_p)/forward_step_length)
+			self.drift_guess2 = arcsin((-1*rev_s2 + rev_s2_p)/forward_step_length)
 			if(self.sens2_prev > self.sens2):
 				self.drift_dir = -1
 			else:
 				self.drift_dir = 1	
-				self.robot.robotTurn(self.drift_dir*(self.drift_guess1+self.drift_guess2)/2)
-				self.valid_s_reads = 0
-				self.state = controller_State.path_follow
-	
+			self.robot.robotTurn(self.drift_dir*(self.drift_guess1+self.drift_guess2)/2)
+			self.valid_s_reads = 0
+			self.state = controller_State.path_follow
+			'''
+			if(not self.turnt):
+
+				print "-======================== turning 90 degress============="
+				self.turnt = 1
+
+				if(self.sens2_prev > self.sens2):
+					self.drift_dir = -1
+				else:
+					self.drift_dir = 1
+				self.robot.robotTurn(pi/2*self.drift_dir*-1)
+
+			if(self.turnt):	
+
+				if((min(self.sens1, self.sens2) < min(self.sens1_prev, self.sens2_prev)) and (max(self.sens1, self.sens2) < max(self.sens1_prev, self.sens2_prev)) and max(self.sens1, self.sens2) < 220):
+					self.dir_fixed = self.dir_fixed*-1
+
+
+				if(abs(self.sens1 - self.sens2) < max_sens_dif/2):
+					self.robot.robotTurn(self.drift_dir*pi/2)
+					self.turnt = 0
+					print self.sens1
+					print self.sens2
+					print "========on the path again.. turn back!!@$%!@$Q!==========="
+					self.state = controller_State.path_follow
+					self.ready_for_forward = 1
+
+				self.robot.robotMove(1, self.dir_fixed)
+				self.valid_s_reads = 0	
+				print "====-=-=-=- not on path stil.... keep moving robot forward!!!@$!@$!@---0-"
+				print self.general_x_direction
+
+				
 	def controller_pathTransition(self):
-		#move forward a bit more, then rotate
+		#move forward a bit more, then xrotate
 		#folow old path until either: both sensors have valid reads
 		#or: one sensor reads max
+		print "PATH TRANSITIONTAA+SF+++++++++++++++++++++==============================="
 		if(self.keep_looking and self.valid_s_reads):		
 			self.robot.robotMove(f_steps, 1)
 			self.valid_s_reads = 0
-			if(self.sens1 < 1 or self.sens2 < 1):
+			if(self.sens1 > 0 and self.sens2 > 0):
 				self.turn_transition = 1
-			elif(self.sens1 > 10 or self.sens2 > 10 or self.sens1 == 0 or self.sens2 == 0):
+				self.keep_looking = 0
+				print "BEGIN TRANSITION+____+_+______+++++++++=-=-=-=-="
+			elif(self.sens1 > 240 or self.sens2 > 240):
+				print "BEGIN TRANSITION+____+_+______+++++++++=-=-=-=-="
 				self.turn_transition = 1
+				self.keep_looking = 0
 
 		elif(self.turn_transition):
 			temp_x_o = self.prev_WP_list[0][0]
@@ -323,24 +317,39 @@ class REDRobotControlPlan ( Plan ):
 			temp_x_n = self.prev_WP_list[1][0]
 			temp_y_n = self.prev_WP_list[1][1]
 			t_slope = (temp_y_n - temp_y_o) / (temp_x_n - temp_x_o)
-			old_angle = numpy.atan(t_slope)
-			if(old_angle > 0):
-				old_angle = numpy.pi+old_angle
+			old_angle = arctan(t_slope)
+			#if(old_angle < 0):
+			#	old_angle = 2*pi+old_angle
 
 			temp_x_o = self.current_WP_list[0][0]
 			temp_y_o = self.current_WP_list[0][1]
 			temp_x_n = self.current_WP_list[1][0]
 			temp_y_n = self.current_WP_list[1][1]
 			t_slope = (temp_y_n - temp_y_o) / (temp_x_n - temp_x_o)
-			new_angle = numpy.atan(t_slope)
-			if(new_angle > 0):
-				new_angle = numpy.pi+new_angle
-			self.robot.robotTurn(-(new_angle - old_angle))
-			self.robot.tagRotate(-(new_angle - old_angle))
+			new_angle = arctan(t_slope)
+			#if(new_angle < 0):
+			#	new_angle = 2*pi+new_angle
+			self.robot.robotTurn((new_angle - old_angle))
+			self.robot.tagRotate((new_angle - old_angle))
+			self.general_x_direction = sign(self.current_WP_list[1][0] - self.current_WP_list[0][0]) 
 			self.prev_WP_list = self.current_WP_list
 			self.valid_s_reads = 0
 			self.turn_transition = 0
 			self.state = controller_State.path_find
+			self.robot.robotMove(8, 1)
+
+
+	def get_more_reads(self):
+		dtag = pi/16
+		if(self.valid_s_reads and not self.turn_transition):
+			self.robot.tagRotate(dtag)
+			self.robot.robotTurn(dtag)
+			self.valid_s_reads = 0
+			if(self.max_one_val < max(self.sens1, self.sens2)):
+				self.max_one_val = max(self.sens1, self.sens2)
+			else:
+				self.robot.robotMove(1,1)
+
 
 	def behavior(self):
 		while True:
@@ -353,19 +362,28 @@ class REDRobotControlPlan ( Plan ):
 					#set self.dir_to_wp to difference in x values between previous wp and next wp...
 
 			if(self.autonomous == False):
-				yield self.forDuration(1.0/20.0)
+				yield self.forDuration(1.0/50.0)
 				continue
 
-			if self.controller_updateSensorData() is 0:
-				yield self.forDuration(1/20.0)
-				continue
+			s_stat = self.controller_updateSensorData()
 
-			if(self.state == controller_State.init):
+
+			if s_stat == 0:
+				yield self.forDuration(1/50.0)
+				continue
+			
+			if s_stat == -1:
+				
+				self.get_more_reads()
+
+				print "=-=-=-=-=-=-=-=-=-=-looking for two sensor readings=-=-=-=-=-=-=-=-=-=-=-=-=-="
+
+			elif(self.state == controller_State.init):
 				print "wait for waypoints"
+
 				self.controller_waitForWaypoints()
-			elif(self.state == controller_State.path_find_init):
-				print "entering path find init"
-				self.controller_pathFindInit()
+
+
 			elif(self.state == controller_State.path_follow):
 				print "entering path follow"
 				self.controller_pathFollow()
@@ -376,4 +394,4 @@ class REDRobotControlPlan ( Plan ):
 				print "entering path transition"
 				self.controller_pathTransition()
 				
-		yield self.forDuration(1.0/20.0)
+			yield self.forDuration(1.0/50.0)

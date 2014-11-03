@@ -19,7 +19,8 @@ def lookup_Sensor_Nonlin(y):
 
     
   data = loadtxt('Sensor_NonLin.txt');
-
+  up_bdx = 0;
+  low_bdx  = 0;
   
   for i in range(0,int(max_x/steps)):
     if(y > data[i]):
@@ -52,6 +53,7 @@ def get_Filtered_S_Value(snum, splan):
 	for i in range(0,n):
 		#read the value at sensor snum
 		vals[i] = update_sensor(snum, splan)
+		time.sleep(.4)
 	sns_dat = mean(vals)
 	return lookup_Sensor_Nonlin(sns_dat)
 
@@ -111,7 +113,7 @@ def path_find(robot, splan):
     robot.robot_turn(pi/2);
     s1 = get_Filtered_S_Value(1, splan)
     s2 = get_Filtered_S_Value(2, splan);
-    th = .01;
+    th = 10
     while(abs(s1-s2) > th):
 		robot.robotMove(step_length, 1);
 		s1 = get_Filtered_S_Value(1, splan);
@@ -137,7 +139,7 @@ def calib_drift(robot):
 # sensor1 should always on the left of moving direction
 # sensor2 should always on the right of moving direction
 
-def path_find_init(robot, splan):
+def path_find_init(robot, splan, strmr):
 	#start with two sensor reading
 	#find direction to go in
 	#rotate tag 90 deg to line
@@ -145,33 +147,62 @@ def path_find_init(robot, splan):
 	s1 = get_Filtered_S_Value(1, splan);
 	s2 = get_Filtered_S_Value(2, splan);
 
+	print s1
+	print s2
+
 	diff = s1-s2
+	direction = 0;
 	if(diff > 0):
 		direction = 1;
-	if( diff < 0):
+	elif( diff < 0):
 		direction = -1;
-
+	else:
+		return
+	turn_by = pi/45
+	print "found initial difference!!!!!"
+	print diff
 	#rotate tag until difference is maximized
 	print("rotating tag until difference is maximized")
 	angle = 0;
-	robot.unitTagRotate(direction);
-	angle = angle + robot.dtheta*direction;
+
+	robot.tagRotate(direction*turn_by);
+	strmr.emitTagMessage()
+	angle = angle + turn_by*direction;
+
 	s1 = get_Filtered_S_Value(1, splan);
 	s2 = get_Filtered_S_Value(2, splan);
+
+
 	diffn = s1 - s2;
+
+	print "new difference:\n"
+	print diffn*direction
+	print "old difference:"
+	print diff*direction
 	while(diffn*direction > diff*direction):
-		robot.unitTagRotate(direction)
+		print "finally entering while loop"
+		robot.tagRotate(direction*turn_by)
+		strmr.emitTagMessage()
 		s1 = get_Filtered_S_Value(1, splan);
 		s2 = get_Filtered_S_Value(2, splan);
 		diff = diffn;
 		diffn = s1 - s2;
-		angle = angle + robot.dtheta*direction
-		print("turn")
+		angle = angle + turn_by*direction
+		print "old diff"
+		print(diff)
+		print "new diff"
+		print(diffn)
+		time.sleep(1)
+	print "angle"
+	print angle
+	print "rotated tag until maximum difference!!!"
+	assert(0)
+
 
 	#now tag is perpendicular to line
 	robot.robotTurn(angle)
 
-	dt = 1;
+	dt = 15;
 	print("moving robot forward")
 	while(abs(diffn) < dt):
 		print ("bump")
@@ -196,7 +227,7 @@ def controller(strmr, robot, splan):
 
 	follow_th = .5
 
-	path_find_init(robot, splan)
+	path_find_init(robot, splan, strmr)
 
 	print("entering loop")
 	while(len(waypoints)):
