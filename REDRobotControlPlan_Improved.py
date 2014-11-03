@@ -4,6 +4,8 @@ from joy import Plan, progress
 from waypointShared import *
 
 
+
+#move parameters
 turn_by = pi/45
 f_steps = 1
 max_sens_dif = 70
@@ -13,7 +15,7 @@ follow_th = 30
 distance_between_sensors = 1
 
 
-
+#load initial sensor data. We characterize dhte sensor data.. but it turned out to not be very helpful
 def sensorDataInit():
 	data = loadtxt('Sensor_NonLin.txt');
 	return data
@@ -91,6 +93,11 @@ class REDRobotControlPlan ( Plan ):
 		self.turnt = 0
 		self.dir_fixed = 0
 
+		self.maxd = 0
+		self.f_turnt = 0
+
+		self.f_dir = 1
+		self.find_dir_dir = 1
 
 
 		self.general_x_direction = 0
@@ -98,6 +105,7 @@ class REDRobotControlPlan ( Plan ):
 
 		self.only_one_reading = 0
 		self.max_one_val = 0
+		self.block_find = 0
 		#path follow sub_states
 		self.ready_for_forward = 1
 
@@ -201,11 +209,16 @@ class REDRobotControlPlan ( Plan ):
 
 	def controller_pathFollow(self):
 		if(self.ready_for_forward):
-			self.robot.robotMove(f_steps, 1)
+			self.robot.robotMove(f_steps, self.f_dir)
 			self.valid_s_reads = 0
 			self.ready_for_forward = 0
 		elif(self.valid_s_reads):
-			if(abs(self.sens1 - self.sens2) > max_sens_dif):
+
+			if(self.sens1 < 5 or self.sens2 < 5):
+				self.f_dir = -1*self.f_dir
+				self.block_find = 1
+			
+			elif(abs(self.sens1 - self.sens2) > max_sens_dif):
 				#too far off path
 				self.state = controller_State.path_find
 
@@ -217,6 +230,7 @@ class REDRobotControlPlan ( Plan ):
 
 	def controller_pathFind(self):
 		#go here if we are too far off the path
+		self.block_find = 0
 		drift_calib_f_step = 2
 		if(self.ready_for_forward):
 			self.sens1_prev = self.sens1
@@ -302,6 +316,10 @@ class REDRobotControlPlan ( Plan ):
 		if(self.keep_looking and self.valid_s_reads):		
 			self.robot.robotMove(f_steps, 1)
 			self.valid_s_reads = 0
+			if(len(self.current_WP_list) != len(self.prev_WP_list)):
+				self.turn_transition = 1
+				self.keep_looking = 0
+
 			if(self.sens1 > 0 and self.sens2 > 0):
 				self.turn_transition = 1
 				self.keep_looking = 0
@@ -340,15 +358,24 @@ class REDRobotControlPlan ( Plan ):
 
 
 	def get_more_reads(self):
-		dtag = pi/16
+		self.robot.robotMove(3,self.find_dir_dir)
+		if(self.sens1 < 5 or self.sens2 < 5):
+			self.find_dir_dir = -1*self.find_dir_dir
+			self.robot.robotMove(6, self.find_dir_dir)
+
+		'''dtag = pi/16
 		if(self.valid_s_reads and not self.turn_transition):
 			self.robot.tagRotate(dtag)
 			self.robot.robotTurn(dtag)
 			self.valid_s_reads = 0
-			if(self.max_one_val < max(self.sens1, self.sens2)):
+			if(self.max_one_val < max(self.sens1, self.sens2) and not self.maxd):
 				self.max_one_val = max(self.sens1, self.sens2)
+				self.maxd = 0
 			else:
+				self.maxd = 1
+				self.robot.robotTurn(-pi/2)
 				self.robot.robotMove(1,1)
+				self.f_turnt = 1'''
 
 
 	def behavior(self):
@@ -362,24 +389,26 @@ class REDRobotControlPlan ( Plan ):
 					#set self.dir_to_wp to difference in x values between previous wp and next wp...
 
 			if(self.autonomous == False):
-				yield self.forDuration(1.0/50.0)
+				yield self.forDuration(1.0/9.0)
 				continue
 
 			s_stat = self.controller_updateSensorData()
 
 
 			if s_stat == 0:
-				yield self.forDuration(1/50.0)
+				yield self.forDuration(1/9.0)
 				continue
 			
-			if s_stat == -1:
+			if s_stat == -1 and self.block_find:
 				
 				self.get_more_reads()
-
+				#if(self.f_turnt):
+				#	self.robot.robotTurn(pi/2)
 				print "=-=-=-=-=-=-=-=-=-=-looking for two sensor readings=-=-=-=-=-=-=-=-=-=-=-=-=-="
 
 			elif(self.state == controller_State.init):
 				print "wait for waypoints"
+
 
 				self.controller_waitForWaypoints()
 
@@ -394,4 +423,4 @@ class REDRobotControlPlan ( Plan ):
 				print "entering path transition"
 				self.controller_pathTransition()
 				
-			yield self.forDuration(1.0/50.0)
+			yield self.forDuration(1/9.0)
