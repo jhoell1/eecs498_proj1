@@ -5,7 +5,7 @@ from waypointShared import *
 
 
 
-#move parameters
+#move parametersor
 turn_by = pi/45
 f_steps = 1
 max_sens_dif = 70

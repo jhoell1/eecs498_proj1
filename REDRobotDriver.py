@@ -11,82 +11,6 @@ import time
 
 from pdb import set_trace as DEBUG
 
-# class wheelPlan ( Plan ):    
-
-#     def __init__(self,app,lw,rw,torque,time,angleStepGuess, *arg,**kw):
-#         Plan.__init__(self,app,*arg,**kw)
-#         self.lw = lw
-#         self.rw = rw
-#         self.requestRun = False
-#         self.inOperation = False
-#         self.t = torque
-#         self.time = time
-#         self.angleKnown = False
-#         self.angle = 0.0 #robot heading
-#         self.asg = angleStepGuess # estimate based on data of how much the servo turns with the given torque in the given time
-
-#     def moveForward(self, direction): # left is + angle increase
-#         if not self.inOperation:
-#             self.requestRun = True
-#             self.dir_L = direction
-#             self.dir_R = -1*direction
-
-#     def turnSingle(self,direction):
-#         if not self.inOperation:
-#             self.requestRun = True
-#             self.dir_L = direction
-#             self.dir_R = direction
-
-#     def calibrateAngleGuess(self):
-#         #TODO: AUTOMATE ANGLE GUESS CREATION
-#             # Do a bunch of unit turns and see how much the angle changes. throw out any values
-#             # that are too large or too small --> easiest way?
-#         print "empty"
-
-#     def behavior(self):
-#         while True:
-#             if self.requestRun is True:
-#                 self.inOperation = True
-#                 pos_before_L = self.lw.get_pos()/100.0 #get_pos values are in decidegrees
-#                 pos_before_R = self.rw.get_pos()/100.0 #get_pos values are in decidegrees
-
-#                 self.lw.set_torque(self.t*self.dir_L)
-#                 self.rw.set_torque(self.t*self.dir_R)
-#                 yield self.forDuration(self.time)
-#                 self.rw.set_torque(0)
-#                 self.lw.set_torque(0)
-#                 self.requestRun = False
-#                 self.inOperation = False
-#                 pos_after_L = self.lw.get_pos()/100.0 #get_pos values are in decidegrees
-#                 pos_after_R = self.rw.get_pos()/100.0 #get_pos values are in decidegrees
-
-#                 ##handle deadzone stuff
-#                 diff_L = pos_after_L - pos_before_L
-#                 diff_R = pos_after_R - pos_before_R
-
-#                 print "wheels rotated: " + str((abs(diff_L)+abs(diff_R))/2.0)
-
-#                 if self.angleKnown is True: #angle has been initialized
-#                     if abs(diff_L - self.asg) > 0.5: #usually means that the step was into the deadzone, inside the deadzone or out of the deadzone
-#                         self.angle += 7.0/13.0*self.asg #increase angle by step guess (which was tuned previously)
-#                     else:
-#                         self.angle += 7.0/13.0(diff_R+diff_L)/2.0
-#                 else:
-#                     if abs(diff_L - self.asg) < 0.5: #ideally means that both side of the step was not in the deadzone
-#                         self.angle = 7.0/13.0(diff_R+diff_L)/2.0
-#                         self.angleKnown = True
-#                     else:
-#                         print "cannot determine absolute angle yet unfortunately. Will wait for next step"
-
-#                 #correct angle to be between -pi and pi
-#                 while (self.angle > pi):
-#                     self.angle -= 2*pi
-#                 while (self.angle < -pi):
-#                     self.angle += 2*pi
-#                 print "Current Robot Heading: " + str(self.angle)
-#             yield self.forDuration(1/20)
-
-
 class servoPlan( Plan ):
     def __init__(self,app,servo,torque,time,angleStepGuess, *arg,**kw):
         Plan.__init__(self, app, *arg, **kw )
@@ -329,7 +253,7 @@ class REDRobotDriver( Plan ):
                 print self.dTheta
                 if abs(self.orientation - self.robotAngleRequest) > 0.25:
                     self.unitRobotRotate(self.turnDir)
-                    self.unitLaserRotate(sign(self.robotAngleRequest - self.orientation))
+                    self.unitLaserRotate(-self.turnDir)
                 else:
                     self.robotRotateRequest = False
                     self.tagRotate(self.rotateBack) #-original angle
